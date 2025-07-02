@@ -1,47 +1,75 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native';
+// index.tsx
+import { useEffect, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useQuery } from 'convex/react';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Shield, Trophy, Calendar, Users, Target, Zap, LogIn, UserPlus, ArrowRight } from 'lucide-react-native';
+import {
+  Shield,
+  Trophy,
+  Calendar,
+  Users,
+  Target,
+  Zap,
+  LogIn,
+  UserPlus,
+  ArrowRight,
+} from 'lucide-react-native';
 import { api } from '@/convex/_generated/api';
-import AuthModal from '../components/AuthModel';
+
+import SignIn from '../components/SignIn';
+import SignUp from '../components/SignUp';
 
 export default function HomeScreen() {
   const { user, isLoaded } = useUser();
-  const [authModalVisible, setAuthModalVisible] = useState(false);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [isNavigating, setIsNavigating] = useState(false);
-  
+  const [signInVisible, setSignInVisible] = useState(false);
+  const [signUpVisible, setSignUpVisible] = useState(false);
+
+  const navigationRef = useRef(false);
+
   const userData = useQuery(
     api.users.getUserByClerkId,
-    user?.id ? { clerkId: user.id } : "skip"
+    user?.id ? { clerkId: user.id } : 'skip'
   );
 
-  // Handle navigation after authentication
   useEffect(() => {
-    if (isLoaded && user && userData && !isNavigating) {
-      setIsNavigating(true);
-      // Small delay to prevent the setState error
+    if (
+      isLoaded &&
+      user &&
+      userData &&
+      !navigationRef.current
+    ) {
+      navigationRef.current = true;
       setTimeout(() => {
         router.replace('/(tabs)');
       }, 100);
     }
-  }, [isLoaded, user, userData, isNavigating]);
+  }, [isLoaded, user, userData]);
 
-  // If user is authenticated but no profile data, redirect to role selection
   useEffect(() => {
-    if (isLoaded && user && userData === null && !isNavigating) {
-      setIsNavigating(true);
+    if (
+      isLoaded &&
+      user &&
+      userData === null &&
+      !navigationRef.current
+    ) {
+      navigationRef.current = true;
       setTimeout(() => {
         router.replace('/role-selection');
       }, 100);
     }
-  }, [isLoaded, user, userData, isNavigating]);
+  }, [isLoaded, user, userData]);
 
-  // Show loading while checking authentication
-  if (!isLoaded || (user && isNavigating)) {
+  if (!isLoaded || (user && navigationRef.current)) {
     return (
       <View style={styles.loadingContainer}>
         <View style={styles.loadingContent}>
@@ -56,247 +84,248 @@ export default function HomeScreen() {
     );
   }
 
-  // If user is authenticated and has profile data, they shouldn't see this screen
   if (user && userData) {
     return null;
   }
 
-  const handleAuthAction = (mode: 'signin' | 'signup') => {
-    setAuthMode(mode);
-    setAuthModalVisible(true);
+  const openSignIn = () => {
+    setSignInVisible(true);
+    setSignUpVisible(false);
+  };
+
+  const openSignUp = () => {
+    setSignUpVisible(true);
+    setSignInVisible(false);
   };
 
   const handleProtectedAction = (action: () => void) => {
     if (user) {
       action();
     } else {
-      setAuthMode('signin');
-      setAuthModalVisible(true);
+      openSignIn();
     }
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Hero Section */}
-      <LinearGradient
-        colors={['#1a1a1a', '#2a2a2a', '#1a1a1a']}
-        style={styles.hero}
-      >
-        <View style={styles.heroContent}>
-          <View style={styles.brandContainer}>
-            <View style={styles.logo}>
-              <Shield size={50} color="#FFD700" />
+    <>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <LinearGradient
+          colors={['#1a1a1a', '#2a2a2a', '#1a1a1a']}
+          style={styles.hero}
+        >
+          <View style={styles.heroContent}>
+            <View style={styles.brandContainer}>
+              <View style={styles.logo}>
+                <Shield size={50} color="#FFD700" />
+              </View>
+              <Text style={styles.logoText}>Combat Domain</Text>
             </View>
-            <Text style={styles.logoText}>Combat Domain</Text>
+
+            <Text style={styles.heroTitle}>
+              The Ultimate Fighting{'\n'}Community Platform
+            </Text>
+
+            <Text style={styles.heroSubtitle}>
+              Connect fighters, promoters, and fans in one powerful platform. {'\n'}
+              Track records, organize events, and build your fighting legacy.
+            </Text>
+
+            <View style={styles.heroButtons}>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={openSignUp}
+                activeOpacity={0.8}
+              >
+                <UserPlus size={20} color="#1a1a1a" />
+                <Text style={styles.primaryButtonText}>Get Started</Text>
+                <ArrowRight size={16} color="#1a1a1a" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={openSignIn}
+                activeOpacity={0.8}
+              >
+                <LogIn size={20} color="#FFD700" />
+                <Text style={styles.secondaryButtonText}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          
-          <Text style={styles.heroTitle}>
-            The Ultimate Fighting{'\n'}Community Platform
-          </Text>
-          
-          <Text style={styles.heroSubtitle}>
-            Connect fighters, promoters, and fans in one powerful platform. 
-            Track records, organize events, and build your fighting legacy.
+
+          <View style={styles.heroImageContainer}>
+            <Image
+              source={{
+                uri:
+                  'https://images.pexels.com/photos/4761663/pexels-photo-4761663.jpeg?auto=compress&cs=tinysrgb&w=800',
+              }}
+              style={styles.heroImage}
+            />
+            <View style={styles.heroImageOverlay} />
+          </View>
+        </LinearGradient>
+
+        <View style={styles.featuresSection}>
+          <Text style={styles.sectionTitle}>Why Choose Combat Domain?</Text>
+          <Text style={styles.sectionSubtitle}>
+            Everything you need to succeed in the fighting world
           </Text>
 
-          <View style={styles.heroButtons}>
-            <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={() => handleAuthAction('signup')}
+          <View style={styles.featuresGrid}>
+            <TouchableOpacity
+              style={styles.featureCard}
+              onPress={() => handleProtectedAction(() => router.push('/(tabs)'))}
+              activeOpacity={0.9}
+            >
+              <View style={styles.featureIconContainer}>
+                <Shield size={32} color="#FFD700" />
+              </View>
+              <Text style={styles.featureTitle}>Fighter Profiles</Text>
+              <Text style={styles.featureDescription}>
+                Create comprehensive fighter profiles with records, achievements, and career stats
+              </Text>
+              <View style={styles.featureArrow}>
+                <ArrowRight size={16} color="#FFD700" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.featureCard}
+              onPress={() => handleProtectedAction(() => router.push('/create-event'))}
+              activeOpacity={0.9}
+            >
+              <View style={styles.featureIconContainer}>
+                <Trophy size={32} color="#FFD700" />
+              </View>
+              <Text style={styles.featureTitle}>Event Management</Text>
+              <Text style={styles.featureDescription}>
+                Organize and promote fighting events with complete venue and participant management
+              </Text>
+              <View style={styles.featureArrow}>
+                <ArrowRight size={16} color="#FFD700" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.featureCard}
+              onPress={() => handleProtectedAction(() => router.push('/(tabs)/calendar'))}
+              activeOpacity={0.9}
+            >
+              <View style={styles.featureIconContainer}>
+                <Calendar size={32} color="#FFD700" />
+              </View>
+              <Text style={styles.featureTitle}>Event Calendar</Text>
+              <Text style={styles.featureDescription}>
+                Never miss a fight with our comprehensive calendar of upcoming events
+              </Text>
+              <View style={styles.featureArrow}>
+                <ArrowRight size={16} color="#FFD700" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.featureCard}
+              onPress={() => handleProtectedAction(() => router.push('/(tabs)/community'))}
+              activeOpacity={0.9}
+            >
+              <View style={styles.featureIconContainer}>
+                <Users size={32} color="#FFD700" />
+              </View>
+              <Text style={styles.featureTitle}>Community</Text>
+              <Text style={styles.featureDescription}>
+                Connect with fighters, promoters, and fans from around the world
+              </Text>
+              <View style={styles.featureArrow}>
+                <ArrowRight size={16} color="#FFD700" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.featureCard}
+              onPress={() => handleProtectedAction(() => router.push('/fight-records'))}
+              activeOpacity={0.9}
+            >
+              <View style={styles.featureIconContainer}>
+                <Target size={32} color="#FFD700" />
+              </View>
+              <Text style={styles.featureTitle}>Fight Records</Text>
+              <Text style={styles.featureDescription}>
+                Track detailed fight history with wins, losses, methods, and video links
+              </Text>
+              <View style={styles.featureArrow}>
+                <ArrowRight size={16} color="#FFD700" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.featureCard}
+              onPress={() => handleProtectedAction(() => router.push('/all-events'))}
+              activeOpacity={0.9}
+            >
+              <View style={styles.featureIconContainer}>
+                <Zap size={32} color="#FFD700" />
+              </View>
+              <Text style={styles.featureTitle}>Real-time Updates</Text>
+              <Text style={styles.featureDescription}>
+                Get instant updates on fight results, event changes, and community activity
+              </Text>
+              <View style={styles.featureArrow}>
+                <ArrowRight size={16} color="#FFD700" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Join the Community</Text>
+          <Text style={styles.sectionSubtitle}>
+            Thousands of fighters and promoters trust Combat Domain
+          </Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>1000+</Text>
+              <Text style={styles.statLabel}>Active Fighters</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>500+</Text>
+              <Text style={styles.statLabel}>Events Organized</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>50+</Text>
+              <Text style={styles.statLabel}>Promoters</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.ctaSection}>
+          <Text style={styles.ctaTitle}>Ready to Start Your Journey?</Text>
+          <Text style={styles.ctaSubtitle}>
+            Join thousands of fighters and promoters building their legacy
+          </Text>
+
+          <View style={styles.ctaButtons}>
+            <TouchableOpacity
+              style={styles.ctaPrimaryButton}
+              onPress={openSignUp}
               activeOpacity={0.8}
             >
-              <UserPlus size={20} color="#1a1a1a" />
-              <Text style={styles.primaryButtonText}>Get Started</Text>
-              <ArrowRight size={16} color="#1a1a1a" />
+              <Text style={styles.ctaPrimaryButtonText}>Create Account</Text>
+              <ArrowRight size={20} color="#1a1a1a" />
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.secondaryButton}
-              onPress={() => handleAuthAction('signin')}
+
+            <TouchableOpacity
+              style={styles.ctaSecondaryButton}
+              onPress={openSignIn}
               activeOpacity={0.8}
             >
-              <LogIn size={20} color="#FFD700" />
-              <Text style={styles.secondaryButtonText}>Sign In</Text>
+              <Text style={styles.ctaSecondaryButtonText}>Sign In</Text>
             </TouchableOpacity>
           </View>
         </View>
+      </ScrollView>
 
-        <View style={styles.heroImageContainer}>
-          <Image
-            source={{ uri: 'https://images.pexels.com/photos/4761663/pexels-photo-4761663.jpeg?auto=compress&cs=tinysrgb&w=800' }}
-            style={styles.heroImage}
-          />
-          <View style={styles.heroImageOverlay} />
-        </View>
-      </LinearGradient>
-
-      {/* Features Section */}
-      <View style={styles.featuresSection}>
-        <Text style={styles.sectionTitle}>Why Choose Combat Domain?</Text>
-        <Text style={styles.sectionSubtitle}>
-          Everything you need to succeed in the fighting world
-        </Text>
-        
-        <View style={styles.featuresGrid}>
-          <TouchableOpacity 
-            style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/(tabs)'))}
-            activeOpacity={0.9}
-          >
-            <View style={styles.featureIconContainer}>
-              <Shield size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Fighter Profiles</Text>
-            <Text style={styles.featureDescription}>
-              Create comprehensive fighter profiles with records, achievements, and career stats
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/create-event'))}
-            activeOpacity={0.9}
-          >
-            <View style={styles.featureIconContainer}>
-              <Trophy size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Event Management</Text>
-            <Text style={styles.featureDescription}>
-              Organize and promote fighting events with complete venue and participant management
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/(tabs)/calendar'))}
-            activeOpacity={0.9}
-          >
-            <View style={styles.featureIconContainer}>
-              <Calendar size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Event Calendar</Text>
-            <Text style={styles.featureDescription}>
-              Never miss a fight with our comprehensive calendar of upcoming events
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/(tabs)/community'))}
-            activeOpacity={0.9}
-          >
-            <View style={styles.featureIconContainer}>
-              <Users size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Community</Text>
-            <Text style={styles.featureDescription}>
-              Connect with fighters, promoters, and fans from around the world
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/fight-records'))}
-            activeOpacity={0.9}
-          >
-            <View style={styles.featureIconContainer}>
-              <Target size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Fight Records</Text>
-            <Text style={styles.featureDescription}>
-              Track detailed fight history with wins, losses, methods, and video links
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/all-events'))}
-            activeOpacity={0.9}
-          >
-            <View style={styles.featureIconContainer}>
-              <Zap size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Real-time Updates</Text>
-            <Text style={styles.featureDescription}>
-              Get instant updates on fight results, event changes, and community activity
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Stats Section */}
-      <View style={styles.statsSection}>
-        <Text style={styles.sectionTitle}>Join the Community</Text>
-        <Text style={styles.sectionSubtitle}>
-          Thousands of fighters and promoters trust Combat Domain
-        </Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>1000+</Text>
-            <Text style={styles.statLabel}>Active Fighters</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>500+</Text>
-            <Text style={styles.statLabel}>Events Organized</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>50+</Text>
-            <Text style={styles.statLabel}>Promoters</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* CTA Section */}
-      <View style={styles.ctaSection}>
-        <Text style={styles.ctaTitle}>Ready to Start Your Journey?</Text>
-        <Text style={styles.ctaSubtitle}>
-          Join thousands of fighters and promoters building their legacy
-        </Text>
-        
-        <View style={styles.ctaButtons}>
-          <TouchableOpacity 
-            style={styles.ctaPrimaryButton}
-            onPress={() => handleAuthAction('signup')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.ctaPrimaryButtonText}>Create Account</Text>
-            <ArrowRight size={20} color="#1a1a1a" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.ctaSecondaryButton}
-            onPress={() => handleAuthAction('signin')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.ctaSecondaryButtonText}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <AuthModal 
-        visible={authModalVisible}
-        onClose={() => setAuthModalVisible(false)}
-        initialMode={authMode}
-      />
-    </ScrollView>
+      <SignIn visible={signInVisible} onClose={() => setSignInVisible(false)} />
+      <SignUp visible={signUpVisible} onClose={() => setSignUpVisible(false)} />
+    </>
   );
 }
 
