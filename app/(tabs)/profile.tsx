@@ -4,6 +4,7 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import FighterProfile from '../fighter-profile';
 import PromoterProfile from '../promoter-profile';
+import React from 'react';
 
 export default function ProfileScreen() {
   const { user } = useUser();

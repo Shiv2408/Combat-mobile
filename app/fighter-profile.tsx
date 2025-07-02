@@ -26,8 +26,8 @@ export default function FighterProfile({ userData }: FighterProfileProps) {
     <ScrollView style={styles.container}>
       {/* Header with Banner */}
       <View style={styles.header}>
-        {userData.bannerImage ? (
-          <Image source={{ uri: userData.bannerImage }} style={styles.bannerImage} />
+        {userData.roleData.bannerImage ? (
+          <Image source={{ uri: userData.roleData.bannerImage }} style={styles.bannerImage} />
         ) : (
           <View style={styles.defaultBanner} />
         )}
@@ -35,8 +35,8 @@ export default function FighterProfile({ userData }: FighterProfileProps) {
         
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
-            {userData.profileImage ? (
-              <Image source={{ uri: userData.profileImage }} style={styles.avatarImage} />
+            {userData.roleData.profileImage ? (
+              <Image source={{ uri: userData.roleData.profileImage }} style={styles.avatarImage} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarText}>

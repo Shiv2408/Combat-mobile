@@ -3,13 +3,14 @@ import { v } from "convex/values";
 
 export const addAchievement = mutation({
   args: {
-    fighterId: v.id("users"),
+    fighterId: v.string(), // clerkId
     title: v.string(),
     organisation: v.string(),
     opponent: v.string(),
     dateWon: v.string(),
     lastDefenceDate: v.optional(v.string()),
     isCurrentlyHeld: v.boolean(),
+    weightClass: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -23,7 +24,9 @@ export const addAchievement = mutation({
       dateWon: args.dateWon,
       lastDefenceDate: args.lastDefenceDate,
       isCurrentlyHeld: args.isCurrentlyHeld,
+      weightClass: args.weightClass,
       notes: args.notes,
+      isVerified: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -33,7 +36,7 @@ export const addAchievement = mutation({
 });
 
 export const getFighterAchievements = query({
-  args: { fighterId: v.id("users") },
+  args: { fighterId: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("achievements")
@@ -52,6 +55,7 @@ export const updateAchievement = mutation({
     dateWon: v.optional(v.string()),
     lastDefenceDate: v.optional(v.string()),
     isCurrentlyHeld: v.optional(v.boolean()),
+    weightClass: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {

@@ -13,10 +13,10 @@ const DISCIPLINES = ['Boxing', 'MMA', 'Kickboxing', 'Muay Thai', 'BJJ', 'Wrestli
 export default function EditProfileScreen() {
   const { user } = useUser();
   const userData = useQuery(
-    api.users.getUserByClerkId,
+    api.fighters.getFighterProfile,
     user?.id ? { clerkId: user.id } : "skip"
   );
-  const updateUser = useMutation(api.users.updateUser);
+  const updateUser = useMutation(api.fighters.updateFighterProfile);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -63,51 +63,45 @@ export default function EditProfileScreen() {
     );
   };
 
-  const handleSave = async () => {
-    if (!user || !userData) return;
+ const handleSave = async () => {
+  if (!user || !userData) return;
 
-    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-      Alert.alert('Error', 'Please fill in required fields (Name and Email)');
-      return;
-    }
+  setLoading(true);
 
-    setLoading(true);
-    try {
-      const updateData: any = {
-        clerkId: user.id,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-      };
+  try {
+    const updateData: any = {
+      clerkId: user.id,
+    };
 
-      if (fightName.trim()) updateData.fightName = fightName.trim();
-      if (age.trim()) updateData.age = parseInt(age);
-      if (height.trim()) updateData.height = parseInt(height);
-      if (weight.trim()) updateData.weight = parseInt(weight);
-      if (gym.trim()) updateData.gym = gym.trim();
-      if (headCoach.trim()) updateData.headCoach = headCoach.trim();
-      if (selectedDisciplines.length > 0) updateData.disciplines = selectedDisciplines;
-      if (profileImage) updateData.profileImage = profileImage;
-      if (bannerImage) updateData.bannerImage = bannerImage;
+    if (fightName.trim()) updateData.fightName = fightName.trim();
+    if (age.trim()) updateData.age = parseInt(age);
+    if (height.trim()) updateData.height = parseInt(height);
+    if (weight.trim()) updateData.weight = parseInt(weight);
+    if (gym.trim()) updateData.gym = gym.trim();
+    if (headCoach.trim()) updateData.headCoach = headCoach.trim();
+    if (selectedDisciplines.length > 0) updateData.disciplines = selectedDisciplines;
+    if (profileImage) updateData.profileImage = profileImage;
+    if (bannerImage) updateData.bannerImage = bannerImage;
 
-      const socials: any = {};
-      if (instagram.trim()) socials.instagram = instagram.trim();
-      if (facebook.trim()) socials.facebook = facebook.trim();
-      if (youtube.trim()) socials.youtube = youtube.trim();
-      if (Object.keys(socials).length > 0) updateData.socials = socials;
+    const socials: any = {};
+    if (instagram.trim()) socials.instagram = instagram.trim();
+    if (facebook.trim()) socials.facebook = facebook.trim();
+    if (youtube.trim()) socials.youtube = youtube.trim();
+    if (Object.keys(socials).length > 0) updateData.socials = socials;
 
-      await updateUser(updateData);
+    await updateUser(updateData);
 
-      Alert.alert('Success', 'Profile updated successfully', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile');
-    } finally {
-      setLoading(false);
-    }
-  };
+    Alert.alert('Success', 'Profile updated successfully', [
+      { text: 'OK', onPress: () => router.back() },
+    ]);
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    Alert.alert('Error', 'Failed to update profile');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   if (!userData) {
     return (
@@ -117,7 +111,7 @@ export default function EditProfileScreen() {
     );
   }
 
-  const isFighter = userData.role === 'Fighter';
+  const isFighter = (userData as any).role === 'Fighter';
 
   return (
     <View style={styles.container}>
@@ -365,7 +359,7 @@ export default function EditProfileScreen() {
           <View style={styles.form}>
             <View style={styles.roleInfo}>
               <Text style={styles.roleLabel}>Role</Text>
-              <Text style={styles.roleValue}>{userData.role}</Text>
+              <Text style={styles.roleValue}>Fighter</Text>
               <Text style={styles.roleNote}>
                 Role cannot be changed. Contact support if you need to change your role.
               </Text>
