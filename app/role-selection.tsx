@@ -7,12 +7,14 @@ import {
   Alert,
   TextInput,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useMutation } from 'convex/react';
 import { router } from 'expo-router';
-import { Shield, Trophy, Building2 } from 'lucide-react-native';
+import { Shield, Trophy, Building2, ArrowRight } from 'lucide-react-native';
 import { api } from '@/convex/_generated/api';
+import { LinearGradient } from 'expo-linear-gradient';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function RoleSelectionScreen() {
@@ -50,12 +52,16 @@ export default function RoleSelectionScreen() {
       await createUser(userData);
 
       Alert.alert(
-        'Success!',
-        `Welcome to the fighting community as a ${selectedRole}!`,
+        'Welcome to Combat Domain!',
+        `Your ${selectedRole.toLowerCase()} profile has been created successfully. Let's get started!`,
         [
           {
             text: 'Continue',
-            onPress: () => router.replace('/(tabs)'),
+            onPress: () => {
+              setTimeout(() => {
+                router.replace('/(tabs)');
+              }, 300);
+            },
           },
         ]
       );
@@ -67,15 +73,59 @@ export default function RoleSelectionScreen() {
     }
   };
 
+  const getRoleDescription = (role: 'Fighter' | 'Promoter' | 'Gym') => {
+    switch (role) {
+      case 'Fighter':
+        return 'Build your fighting career, track records, and connect with promoters worldwide';
+      case 'Promoter':
+        return 'Organize events, discover talent, and create unforgettable fighting experiences';
+      case 'Gym':
+        return 'Manage your facility, train fighters, and build a thriving fighting community';
+    }
+  };
+
+  const getRoleFeatures = (role: 'Fighter' | 'Promoter' | 'Gym') => {
+    switch (role) {
+      case 'Fighter':
+        return [
+          'Track detailed fight records',
+          'Showcase achievements & titles',
+          'Connect with promoters',
+          'Build your reputation',
+          'Manage training data'
+        ];
+      case 'Promoter':
+        return [
+          'Organize fight events',
+          'Scout new talent',
+          'Manage event logistics',
+          'Promote matches',
+          'Build your brand'
+        ];
+      case 'Gym':
+        return [
+          'Manage gym operations',
+          'Add staff members',
+          'Train fighters',
+          'Track member progress',
+          'Build community'
+        ];
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      {/* Header */}
+      <LinearGradient
+        colors={['#FFD700', '#FFA500']}
+        style={styles.header}
+      >
         <View style={styles.logoContainer}>
-          <Shield size={40} color="#FFD700" />
+          <Shield size={40} color="#1a1a1a" />
         </View>
         <Text style={styles.title}>Choose Your Path</Text>
         <Text style={styles.subtitle}>Select your role in the fighting world</Text>
-      </View>
+      </LinearGradient>
 
       <ScrollView
         style={styles.scrollContainer}
@@ -83,98 +133,68 @@ export default function RoleSelectionScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          {/* Fighter Card */}
-          <TouchableOpacity
-            style={[styles.roleCard, selectedRole === 'Fighter' && styles.selectedCard]}
-            onPress={() => setSelectedRole('Fighter')}
-          >
-            <View style={[styles.roleIcon, selectedRole === 'Fighter' && styles.selectedIcon]}>
-              <Shield size={32} color={selectedRole === 'Fighter' ? '#1a1a1a' : '#FFD700'} />
-            </View>
-            <Text style={[styles.roleTitle, selectedRole === 'Fighter' && styles.selectedText]}>
-              Fighter
-            </Text>
-            <Text style={[styles.roleDescription, selectedRole === 'Fighter' && styles.selectedDescription]}>
-              Showcase your skills, find matches, and build your fighting career
-            </Text>
-            <View style={styles.features}>
-              <Text style={[styles.feature, selectedRole === 'Fighter' && styles.selectedFeature]}>
-                • Track fight records
-              </Text>
-              <Text style={[styles.feature, selectedRole === 'Fighter' && styles.selectedFeature]}>
-                • Connect with promoters
-              </Text>
-              <Text style={[styles.feature, selectedRole === 'Fighter' && styles.selectedFeature]}>
-                • Build your reputation
-              </Text>
-            </View>
-          </TouchableOpacity>
+          <Text style={styles.welcomeText}>
+            Welcome, {user?.firstName}! Let's set up your profile.
+          </Text>
 
-          {/* Promoter Card */}
-          <TouchableOpacity
-            style={[styles.roleCard, selectedRole === 'Promoter' && styles.selectedCard]}
-            onPress={() => setSelectedRole('Promoter')}
-          >
-            <View style={[styles.roleIcon, selectedRole === 'Promoter' && styles.selectedIcon]}>
-              <Trophy size={32} color={selectedRole === 'Promoter' ? '#1a1a1a' : '#FFD700'} />
-            </View>
-            <Text style={[styles.roleTitle, selectedRole === 'Promoter' && styles.selectedText]}>
-              Promoter
-            </Text>
-            <Text style={[styles.roleDescription, selectedRole === 'Promoter' && styles.selectedDescription]}>
-              Organize events, discover talent, and promote exciting matches
-            </Text>
-            <View style={styles.features}>
-              <Text style={[styles.feature, selectedRole === 'Promoter' && styles.selectedFeature]}>
-                • Organize fight events
-              </Text>
-              <Text style={[styles.feature, selectedRole === 'Promoter' && styles.selectedFeature]}>
-                • Scout new talent
-              </Text>
-              <Text style={[styles.feature, selectedRole === 'Promoter' && styles.selectedFeature]}>
-                • Manage fighters
-              </Text>
-            </View>
-          </TouchableOpacity>
+          {/* Role Cards */}
+          {(['Fighter', 'Promoter', 'Gym'] as const).map((role) => (
+            <TouchableOpacity
+              key={role}
+              style={[styles.roleCard, selectedRole === role && styles.selectedCard]}
+              onPress={() => setSelectedRole(role)}
+              activeOpacity={0.9}
+            >
+              <View style={styles.roleCardContent}>
+                <View style={[styles.roleIcon, selectedRole === role && styles.selectedIcon]}>
+                  {role === 'Fighter' && <Shield size={32} color={selectedRole === role ? '#1a1a1a' : '#FFD700'} />}
+                  {role === 'Promoter' && <Trophy size={32} color={selectedRole === role ? '#1a1a1a' : '#FFD700'} />}
+                  {role === 'Gym' && <Building2 size={32} color={selectedRole === role ? '#1a1a1a' : '#FFD700'} />}
+                </View>
+                
+                <View style={styles.roleInfo}>
+                  <Text style={[styles.roleTitle, selectedRole === role && styles.selectedText]}>
+                    {role}
+                  </Text>
+                  <Text style={[styles.roleDescription, selectedRole === role && styles.selectedDescription]}>
+                    {getRoleDescription(role)}
+                  </Text>
+                </View>
 
-          {/* Gym Owner Card */}
-          <TouchableOpacity
-            style={[styles.roleCard, selectedRole === 'Gym' && styles.selectedCard]}
-            onPress={() => setSelectedRole('Gym')}
-          >
-            <View style={[styles.roleIcon, selectedRole === 'Gym' && styles.selectedIcon]}>
-              <Building2 size={32} color={selectedRole === 'Gym' ? '#1a1a1a' : '#FFD700'} />
-            </View>
-            <Text style={[styles.roleTitle, selectedRole === 'Gym' && styles.selectedText]}>
-              Gym Owner
-            </Text>
-            <Text style={[styles.roleDescription, selectedRole === 'Gym' && styles.selectedDescription]}>
-              Manage your gym, train fighters, and build a fighting community
-            </Text>
-            <View style={styles.features}>
-              <Text style={[styles.feature, selectedRole === 'Gym' && styles.selectedFeature]}>
-                • Manage gym operations
-              </Text>
-              <Text style={[styles.feature, selectedRole === 'Gym' && styles.selectedFeature]}>
-                • Add staff members
-              </Text>
-              <Text style={[styles.feature, selectedRole === 'Gym' && styles.selectedFeature]}>
-                • Train fighters
-              </Text>
-            </View>
-
-            {selectedRole === 'Gym' && (
-              <View style={styles.gymNameContainer}>
-                <TextInput
-                  style={styles.gymNameInput}
-                  placeholder="Enter gym name"
-                  placeholderTextColor="#666"
-                  value={gymName}
-                  onChangeText={setGymName}
-                />
+                {selectedRole === role && (
+                  <View style={styles.selectedIndicator}>
+                    <ArrowRight size={20} color="#FFD700" />
+                  </View>
+                )}
               </View>
-            )}
-          </TouchableOpacity>
+
+              {selectedRole === role && (
+                <View style={styles.featuresContainer}>
+                  <Text style={styles.featuresTitle}>What you can do:</Text>
+                  <View style={styles.features}>
+                    {getRoleFeatures(role).map((feature, index) => (
+                      <Text key={index} style={styles.feature}>
+                        • {feature}
+                      </Text>
+                    ))}
+                  </View>
+
+                  {role === 'Gym' && (
+                    <View style={styles.gymNameContainer}>
+                      <Text style={styles.inputLabel}>Gym Name *</Text>
+                      <TextInput
+                        style={styles.gymNameInput}
+                        placeholder="Enter your gym name"
+                        placeholderTextColor="#666"
+                        value={gymName}
+                        onChangeText={setGymName}
+                      />
+                    </View>
+                  )}
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
 
           {/* Submit Button */}
           <TouchableOpacity
@@ -184,13 +204,20 @@ export default function RoleSelectionScreen() {
             ]}
             onPress={handleRoleSelection}
             disabled={!selectedRole || loading}
+            activeOpacity={0.8}
           >
             {loading ? (
-              <LoadingSpinner size={20} color="#1a1a1a" />
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size={20} color="#1a1a1a" />
+                <Text style={styles.loadingText}>Creating your profile...</Text>
+              </View>
             ) : (
-              <Text style={styles.submitButtonText}>
-                {selectedRole ? `Join as ${selectedRole}` : 'Select Role'}
-              </Text>
+              <View style={styles.buttonContent}>
+                <Text style={styles.submitButtonText}>
+                  {selectedRole ? `Join as ${selectedRole}` : 'Select Role'}
+                </Text>
+                <ArrowRight size={20} color="#1a1a1a" />
+              </View>
             )}
           </TouchableOpacity>
 
@@ -209,7 +236,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
   },
   header: {
-    backgroundColor: '#FFD700',
     paddingTop: 60,
     paddingBottom: 40,
     paddingHorizontal: 24,
@@ -242,18 +268,24 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 100,
+    paddingTop: 32,
+    paddingBottom: 120,
   },
   content: {
     flex: 1,
   },
+  welcomeText: {
+    fontSize: 18,
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 32,
+    fontWeight: '600',
+  },
   roleCard: {
     backgroundColor: '#2a2a2a',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
-    alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -267,20 +299,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
     transform: [{ scale: 1.02 }],
   },
+  roleCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   roleIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#444',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginRight: 16,
   },
   selectedIcon: {
     backgroundColor: '#FFD700',
   },
+  roleInfo: {
+    flex: 1,
+  },
   roleTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 8,
@@ -289,29 +328,44 @@ const styles = StyleSheet.create({
     color: '#FFD700',
   },
   roleDescription: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#ccc',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 16,
+    lineHeight: 20,
   },
   selectedDescription: {
     color: '#fff',
   },
+  selectedIndicator: {
+    marginLeft: 12,
+  },
+  featuresContainer: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#444',
+  },
+  featuresTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFD700',
+    marginBottom: 12,
+  },
   features: {
-    alignItems: 'flex-start',
+    gap: 6,
   },
   feature: {
     fontSize: 14,
-    color: '#999',
-    marginBottom: 4,
-  },
-  selectedFeature: {
-    color: '#FFD700',
+    color: '#ccc',
+    lineHeight: 20,
   },
   gymNameContainer: {
-    width: '100%',
-    marginTop: 16,
+    marginTop: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 8,
   },
   gymNameInput: {
     backgroundColor: '#1a1a1a',
@@ -339,10 +393,25 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     shadowOpacity: 0.1,
   },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   submitButtonText: {
     color: '#1a1a1a',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    color: '#1a1a1a',
+    fontSize: 16,
+    fontWeight: '600',
   },
   note: {
     fontSize: 12,

@@ -36,6 +36,7 @@ export const addFightRecord = mutation({
       notes: args.notes,
       createdAt: now,
       updatedAt: now,
+      isVerified: false
     });
     
     return fightId;
