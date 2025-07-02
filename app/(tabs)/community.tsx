@@ -9,16 +9,16 @@ export default function CommunityScreen() {
   const [activeTab, setActiveTab] = useState<'fighters' | 'promoters' | 'gyms'>('fighters');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const allFighters = useQuery(api.users.getAllFighters);
-  const allPromoters = useQuery(api.users.getAllPromoters);
-  const allGyms = useQuery(api.users.getAllGyms);
+  const allFighters = useQuery(api.fighters.getAllFighters, { limit: 50 });
+  const allPromoters = useQuery(api.promoters.getAllPromoters, { limit: 50 });
+  const allGyms = useQuery(api.gyms.getAllGyms, { limit: 50 });
 
   const getFilteredData = () => {
     let data: any[] = [];
     
     switch (activeTab) {
       case 'fighters':
-        data = allFighters || [];
+        data = Array.isArray(allFighters) ? allFighters : allFighters?.page || [];
         break;
       case 'promoters':
         data = allPromoters || [];
@@ -34,26 +34,43 @@ export default function CommunityScreen() {
       const searchLower = searchQuery.toLowerCase();
       const name = activeTab === 'gyms' 
         ? item.gymName?.toLowerCase() || ''
+        : activeTab === 'fighters' && item.fightName
+        ? item.fightName.toLowerCase()
         : `${item.firstName} ${item.lastName}`.toLowerCase();
-      const fightName = item.fightName?.toLowerCase() || '';
       const gym = item.gym?.toLowerCase() || '';
+      const companyName = item.companyName?.toLowerCase() || '';
       
       return name.includes(searchLower) || 
-             fightName.includes(searchLower) || 
-             gym.includes(searchLower);
+             gym.includes(searchLower) ||
+             companyName.includes(searchLower);
     });
   };
 
   const handleUserPress = (user: any) => {
-    router.push(`/user-profile?id=${user._id}`);
+    router.push(`/user-profile?id=${user.clerkId}`);
   };
 
   const filteredData = getFilteredData();
 
   const tabs = [
-    { key: 'fighters', label: 'Fighters', icon: Shield, count: allFighters?.length || 0 },
-    { key: 'promoters', label: 'Promoters', icon: Trophy, count: allPromoters?.length || 0 },
-    { key: 'gyms', label: 'Gyms', icon: Building2, count: allGyms?.length || 0 },
+    { 
+      key: 'fighters', 
+      label: 'Fighters', 
+      icon: Shield, 
+      count: Array.isArray(allFighters) ? allFighters.length : allFighters?.page?.length || 0 
+    },
+    { 
+      key: 'promoters', 
+      label: 'Promoters', 
+      icon: Trophy, 
+      count: allPromoters?.length || 0 
+    },
+    { 
+      key: 'gyms', 
+      label: 'Gyms', 
+      icon: Building2, 
+      count: allGyms?.length || 0 
+    },
   ];
 
   return (
@@ -127,7 +144,7 @@ export default function CommunityScreen() {
           {filteredData.length > 0 ? (
             filteredData.map((item) => (
               <TouchableOpacity
-                key={item._id}
+                key={item.clerkId || item._id}
                 style={styles.memberCard}
                 onPress={() => handleUserPress(item)}
                 activeOpacity={0.9}
@@ -146,7 +163,9 @@ export default function CommunityScreen() {
                     <Text style={styles.memberName}>
                       {activeTab === 'gyms' 
                         ? item.gymName 
-                        : (item.fightName || `${item.firstName} ${item.lastName}`)
+                        : activeTab === 'fighters' && item.fightName
+                        ? item.fightName
+                        : `${item.firstName} ${item.lastName}`
                       }
                     </Text>
                     <View style={[
@@ -174,11 +193,26 @@ export default function CommunityScreen() {
                     </Text>
                   )}
 
+                  {activeTab === 'promoters' && item.companyName && (
+                    <Text style={styles.realName}>
+                      {item.companyName}
+                    </Text>
+                  )}
+
                   <View style={styles.memberDetails}>
                     {item.gym && activeTab !== 'gyms' && (
                       <View style={styles.memberDetail}>
                         <MapPin size={14} color="#ccc" />
                         <Text style={styles.memberDetailText}>{item.gym}</Text>
+                      </View>
+                    )}
+
+                    {item.address?.city && (
+                      <View style={styles.memberDetail}>
+                        <MapPin size={14} color="#ccc" />
+                        <Text style={styles.memberDetailText}>
+                          {item.address.city}{item.address.country && `, ${item.address.country}`}
+                        </Text>
                       </View>
                     )}
 
@@ -203,6 +237,21 @@ export default function CommunityScreen() {
                         <Text style={styles.memberDetailText}>
                           {item.staff.length} staff member{item.staff.length !== 1 ? 's' : ''}
                         </Text>
+                      </View>
+                    )}
+
+                    {activeTab === 'promoters' && item.specialties && item.specialties.length > 0 && (
+                      <View style={styles.disciplinesContainer}>
+                        {item.specialties.slice(0, 2).map((specialty: string, index: number) => (
+                          <View key={index} style={styles.disciplineTag}>
+                            <Text style={styles.disciplineText}>{specialty}</Text>
+                          </View>
+                        ))}
+                        {item.specialties.length > 2 && (
+                          <Text style={styles.moreDisciplines}>
+                            +{item.specialties.length - 2} more
+                          </Text>
+                        )}
                       </View>
                     )}
                   </View>
@@ -519,6 +568,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   bottomSpacing: {
-    height: 100, // Extra space for tab bar
+    height: 100,
   },
 });
