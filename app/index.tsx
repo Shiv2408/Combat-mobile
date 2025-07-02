@@ -13,45 +13,68 @@ export default function HomeScreen() {
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [isNavigating, setIsNavigating] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   
   const userData = useQuery(
     api.users.getUserByClerkId,
     user?.id ? { clerkId: user.id } : "skip"
   );
 
+  // Handle initial load completion
+  useEffect(() => {
+    if (isLoaded) {
+      const timer = setTimeout(() => {
+        setInitialLoadComplete(true);
+      }, 500); // Small delay to ensure smooth loading
+      return () => clearTimeout(timer);
+    }
+  }, [isLoaded]);
+
   // Handle navigation after authentication
   useEffect(() => {
-    if (isLoaded && user && userData && !isNavigating) {
+    if (initialLoadComplete && user && userData && !isNavigating) {
       setIsNavigating(true);
-      // Small delay to prevent the setState error
+      // Smooth transition delay
       setTimeout(() => {
         router.replace('/(tabs)');
-      }, 100);
+      }, 300);
     }
-  }, [isLoaded, user, userData, isNavigating]);
+  }, [initialLoadComplete, user, userData, isNavigating]);
 
   // If user is authenticated but no profile data, redirect to role selection
   useEffect(() => {
-    if (isLoaded && user && userData === null && !isNavigating) {
+    if (initialLoadComplete && user && userData === null && !isNavigating) {
       setIsNavigating(true);
       setTimeout(() => {
         router.replace('/role-selection');
-      }, 100);
+      }, 300);
     }
-  }, [isLoaded, user, userData, isNavigating]);
+  }, [initialLoadComplete, user, userData, isNavigating]);
 
-  // Show loading while checking authentication
-  if (!isLoaded || (user && isNavigating)) {
+  // Enhanced loading screen
+  if (!isLoaded || !initialLoadComplete || (user && isNavigating)) {
     return (
       <View style={styles.loadingContainer}>
-        <View style={styles.loadingContent}>
-          <View style={styles.logoContainer}>
-            <Shield size={60} color="#FFD700" />
+        <LinearGradient
+          colors={['#1a1a1a', '#2a2a2a', '#1a1a1a']}
+          style={styles.loadingGradient}
+        >
+          <View style={styles.loadingContent}>
+            <View style={styles.logoContainer}>
+              <Shield size={60} color="#FFD700" />
+            </View>
+            <Text style={styles.loadingTitle}>Combat Domain</Text>
+            <ActivityIndicator size="large" color="#FFD700" style={styles.loadingSpinner} />
+            <Text style={styles.loadingText}>
+              {user ? 'Preparing your dashboard...' : 'Loading your fighting community...'}
+            </Text>
+            {user && userData && (
+              <Text style={styles.loadingSubtext}>
+                Welcome back, {userData.fightName || userData.firstName}!
+              </Text>
+            )}
           </View>
-          <Text style={styles.loadingTitle}>Combat Domain</Text>
-          <ActivityIndicator size="large" color="#FFD700" style={styles.loadingSpinner} />
-          <Text style={styles.loadingText}>Loading your fighting community...</Text>
-        </View>
+        </LinearGradient>
       </View>
     );
   }
@@ -76,7 +99,11 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+    >
       {/* Hero Section */}
       <LinearGradient
         colors={['#1a1a1a', '#2a2a2a', '#1a1a1a']}
@@ -291,6 +318,9 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {/* Bottom spacing for better scrolling */}
+      <View style={styles.bottomSpacing} />
+
       <AuthModal 
         visible={authModalVisible}
         onClose={() => setAuthModalVisible(false)}
@@ -305,9 +335,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a1a',
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   loadingContainer: {
     flex: 1,
     backgroundColor: '#1a1a1a',
+  },
+  loadingGradient: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -316,27 +352,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: 'rgba(255, 215, 0, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
   },
   loadingTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#FFD700',
-    marginBottom: 30,
+    marginBottom: 32,
+    textAlign: 'center',
   },
   loadingSpinner: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   loadingText: {
     fontSize: 16,
     color: '#ccc',
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#FFD700',
+    textAlign: 'center',
+    fontWeight: '600',
   },
   hero: {
     minHeight: 700,
@@ -586,5 +632,8 @@ const styles = StyleSheet.create({
     color: '#FFD700',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  bottomSpacing: {
+    height: 40,
   },
 });

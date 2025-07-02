@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSignIn, useSignUp, useOAuth } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
-import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react-native';
+import { X, Mail, Lock, User, Eye, EyeOff, Shield } from 'lucide-react-native';
 import * as Linking from 'expo-linking';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -35,6 +35,11 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
 
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
 
+  // Update mode when initialMode changes
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
   const resetForm = () => {
     setSignInEmail('');
     setSignInPassword('');
@@ -54,11 +59,25 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
     onClose();
   };
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password: string) => {
+    return password.length >= 8;
+  };
+
   const handleSignIn = async () => {
     if (!signInLoaded) return;
     
     if (!signInEmail.trim() || !signInPassword.trim()) {
       Alert.alert("Error", "Please fill in all fields.");
+      return;
+    }
+
+    if (!validateEmail(signInEmail.trim())) {
+      Alert.alert("Error", "Please enter a valid email address.");
       return;
     }
 
@@ -71,10 +90,10 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
 
       await setSignInActive({ session: completeSignIn.createdSessionId });
       handleClose();
-      router.replace('/');
+      // Navigation will be handled by the main app logic
     } catch (err: any) {
       console.error('Sign In Error', err);
-      Alert.alert("Sign In Failed", err.errors?.[0]?.message || "Invalid credentials or network error.");
+      Alert.alert("Sign In Failed", err.errors?.[0]?.message || "Invalid credentials. Please check your email and password.");
     } finally {
       setLoading(false);
     }
@@ -85,6 +104,16 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
     
     if (!firstName.trim() || !lastName.trim() || !signUpEmail.trim() || !signUpPassword.trim()) {
       Alert.alert("Error", "Please fill in all fields.");
+      return;
+    }
+
+    if (!validateEmail(signUpEmail.trim())) {
+      Alert.alert("Error", "Please enter a valid email address.");
+      return;
+    }
+
+    if (!validatePassword(signUpPassword)) {
+      Alert.alert("Error", "Password must be at least 8 characters long.");
       return;
     }
     
@@ -106,7 +135,7 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
       setPendingVerification(true);
     } catch (err: any) {
       console.error('Sign Up Error', err);
-      Alert.alert("Sign Up Failed", err.errors?.[0]?.message || "Please check your info or try again later.");
+      Alert.alert("Sign Up Failed", err.errors?.[0]?.message || "Please check your information and try again.");
     } finally {
       setLoading(false);
     }
@@ -115,20 +144,25 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
   const handleVerification = async () => {
     if (!signUpLoaded) return;
     
+    if (!code.trim()) {
+      Alert.alert("Error", "Please enter the verification code.");
+      return;
+    }
+    
     setLoading(true);
     try {
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({ code });
+      const signUpAttempt = await signUp.attemptEmailAddressVerification({ code: code.trim() });
       
       if (signUpAttempt.status === 'complete') {
         await setSignUpActive({ session: signUpAttempt.createdSessionId });
         handleClose();
-        router.replace('/role-selection');
+        // User will be redirected to role selection by main app logic
       } else {
-        Alert.alert("Verification Failed", "Please try again.");
+        Alert.alert("Verification Failed", "Please check the code and try again.");
       }
     } catch (err: any) {
       console.error('Verification Error', err);
-      Alert.alert("Verification Failed", err.errors?.[0]?.message || "Incorrect code or network error.");
+      Alert.alert("Verification Failed", err.errors?.[0]?.message || "Invalid verification code. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -144,7 +178,7 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
       if (createdSessionId && typeof setActiveSession === 'function') {
         await setActiveSession({ session: createdSessionId });
         handleClose();
-        router.replace('/role-selection');
+        // Navigation will be handled by main app logic
       }
     } catch (err: any) {
       console.error('Google OAuth error', err);
@@ -157,7 +191,10 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
   if (pendingVerification) {
     return (
       <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-        <View style={styles.container}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.container}
+        >
           <View style={styles.header}>
             <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
               <X size={24} color="#ccc" />
@@ -165,9 +202,13 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
           </View>
 
           <View style={styles.content}>
+            <View style={styles.iconContainer}>
+              <Mail size={48} color="#FFD700" />
+            </View>
+
             <Text style={styles.title}>Verify Your Email</Text>
             <Text style={styles.subtitle}>
-              We've sent a verification code to {signUpEmail}
+              We've sent a verification code to{'\n'}{signUpEmail}
             </Text>
 
             <View style={styles.inputContainer}>
@@ -179,6 +220,8 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
                 value={code}
                 onChangeText={setCode}
                 keyboardType="number-pad"
+                maxLength={6}
+                autoFocus
               />
             </View>
 
@@ -190,18 +233,31 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
               {loading ? (
                 <LoadingSpinner size={20} color="#1a1a1a" />
               ) : (
-                <Text style={styles.primaryButtonText}>Verify</Text>
+                <Text style={styles.primaryButtonText}>Verify Email</Text>
               )}
             </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.resendButton}
+              onPress={() => {
+                // Resend verification code
+                signUp?.prepareEmailAddressVerification({ strategy: 'email_code' });
+              }}
+            >
+              <Text style={styles.resendText}>Didn't receive the code? Resend</Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     );
   }
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.container}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <X size={24} color="#ccc" />
@@ -209,13 +265,17 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
         </View>
 
         <View style={styles.content}>
+          <View style={styles.iconContainer}>
+            <Shield size={48} color="#FFD700" />
+          </View>
+
           <Text style={styles.title}>
             {mode === 'signin' ? 'Welcome Back' : 'Join Combat Domain'}
           </Text>
           <Text style={styles.subtitle}>
             {mode === 'signin' 
-              ? 'Sign in to your account' 
-              : 'Create your fighter or promoter account'
+              ? 'Sign in to access your fighting community' 
+              : 'Create your account and start building your legacy'
             }
           </Text>
 
@@ -257,6 +317,7 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
               onChangeText={mode === 'signin' ? setSignInEmail : setSignUpEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoComplete="email"
             />
           </View>
 
@@ -269,6 +330,7 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
               secureTextEntry={!showPassword}
               value={mode === 'signin' ? signInPassword : signUpPassword}
               onChangeText={mode === 'signin' ? setSignInPassword : setSignUpPassword}
+              autoComplete="password"
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
               {showPassword ? (
@@ -289,6 +351,7 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
                 secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
+                autoComplete="password"
               />
               <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
                 {showConfirmPassword ? (
@@ -330,7 +393,10 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
 
           <TouchableOpacity 
             style={styles.switchButton}
-            onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+            onPress={() => {
+              setMode(mode === 'signin' ? 'signup' : 'signin');
+              resetForm();
+            }}
           >
             <Text style={styles.switchText}>
               {mode === 'signin' 
@@ -340,7 +406,7 @@ export default function AuthModal({ visible, onClose, initialMode = 'signin' }: 
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -363,6 +429,16 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
+  },
+  iconContainer: {
+    alignSelf: 'center',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   title: {
     fontSize: 28,
@@ -402,6 +478,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
     marginBottom: 24,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   primaryButtonText: {
     color: '#1a1a1a',
@@ -445,6 +526,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   switchText: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  resendButton: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginTop: 16,
+  },
+  resendText: {
     color: '#FFD700',
     fontSize: 14,
     fontWeight: '600',
