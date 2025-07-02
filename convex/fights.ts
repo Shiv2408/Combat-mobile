@@ -3,7 +3,7 @@ import { v } from "convex/values";
 
 export const addFightRecord = mutation({
   args: {
-    fighterId: v.id("users"),
+    fighterId: v.string(), // clerkId
     eventName: v.string(),
     fightDate: v.string(),
     country: v.string(),
@@ -13,6 +13,7 @@ export const addFightRecord = mutation({
     method: v.string(),
     round: v.optional(v.number()),
     time: v.optional(v.string()),
+    weightClass: v.optional(v.string()),
     gymName: v.optional(v.string()),
     youtubeLink: v.optional(v.string()),
     notes: v.optional(v.string()),
@@ -31,9 +32,11 @@ export const addFightRecord = mutation({
       method: args.method,
       round: args.round,
       time: args.time,
+      weightClass: args.weightClass,
       gymName: args.gymName,
       youtubeLink: args.youtubeLink,
       notes: args.notes,
+      isVerified: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -43,7 +46,7 @@ export const addFightRecord = mutation({
 });
 
 export const getFighterRecords = query({
-  args: { fighterId: v.id("users") },
+  args: { fighterId: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("fightsRecord")
@@ -65,6 +68,7 @@ export const updateFightRecord = mutation({
     method: v.optional(v.string()),
     round: v.optional(v.number()),
     time: v.optional(v.string()),
+    weightClass: v.optional(v.string()),
     gymName: v.optional(v.string()),
     youtubeLink: v.optional(v.string()),
     notes: v.optional(v.string()),
@@ -76,7 +80,6 @@ export const updateFightRecord = mutation({
       updatedAt: Date.now(),
     };
 
-    // Only update fields that are provided
     Object.keys(updateData).forEach(key => {
       if (updateData[key as keyof typeof updateData] !== undefined) {
         updateFields[key] = updateData[key as keyof typeof updateData];
@@ -96,7 +99,7 @@ export const deleteFightRecord = mutation({
 });
 
 export const getFighterStats = query({
-  args: { fighterId: v.id("users") },
+  args: { fighterId: v.string() },
   handler: async (ctx, args) => {
     const fights = await ctx.db
       .query("fightsRecord")
@@ -120,8 +123,28 @@ export const getFighterStats = query({
         f.result === "Win" && 
         f.method.toLowerCase().includes("decision")
       ).length,
+      lastFight: fights.length > 0 ? fights[0] : null,
+      winStreak: calculateWinStreak(fights),
     };
 
     return stats;
   },
 });
+
+function calculateWinStreak(fights: any[]): number {
+  if (fights.length === 0) return 0;
+  
+  // Sort fights by date (most recent first)
+  const sortedFights = fights.sort((a, b) => new Date(b.fightDate).getTime() - new Date(a.fightDate).getTime());
+  
+  let streak = 0;
+  for (const fight of sortedFights) {
+    if (fight.result === "Win") {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  
+  return streak;
+}

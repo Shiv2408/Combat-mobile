@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useQuery } from 'convex/react';
 import { router } from 'expo-router';
-import { Shield, Trophy, CreditCard as Edit, Mail, Calendar, MapPin, User, Dumbbell, Users, Target, Award, Crown, CalendarPlus } from 'lucide-react-native';
+import { Shield, Trophy, CreditCard as Edit, Mail, Calendar, MapPin, User, Dumbbell, Users, Target, Award, Crown, CalendarPlus, Building2 } from 'lucide-react-native';
 import { api } from '@/convex/_generated/api';
 
 export default function ProfileScreen() {
@@ -12,38 +12,46 @@ export default function ProfileScreen() {
     user?.id ? { clerkId: user.id } : "skip"
   );
   
+  const userStats = useQuery(
+    api.users.getUserStats,
+    user?.id ? { clerkId: user.id } : "skip"
+  );
+
   const fighterStats = useQuery(
     api.fights.getFighterStats,
-    userData && userData.role === 'Fighter' ? { fighterId: userData._id } : "skip"
+    userData && userData.role === 'Fighter' ? { fighterId: userData.clerkId } : "skip"
   );
 
   const achievements = useQuery(
     api.achievements.getFighterAchievements,
-    userData && userData.role === 'Fighter' ? { fighterId: userData._id } : "skip"
+    userData && userData.role === 'Fighter' ? { fighterId: userData.clerkId } : "skip"
   );
 
   const promoterEvents = useQuery(
     api.events.getPromoterEvents,
-    userData && userData.role === 'Promoter' ? { promoterId: userData._id } : "skip"
+    userData && userData.role === 'Promoter' ? { promoterId: userData.clerkId } : "skip"
   );
 
   if (!userData) {
     return (
       <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FFD700" />
         <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
   }
 
   const isFighter = userData.role === 'Fighter';
+  const isPromoter = userData.role === 'Promoter';
+  const isGym = userData.role === 'Gym';
   const currentAchievements = achievements?.filter(a => a.isCurrentlyHeld) || [];
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       {/* Header with Banner */}
       <View style={styles.header}>
-        {userData.bannerImage ? (
-          <Image source={{ uri: userData.bannerImage }} style={styles.bannerImage} />
+        {userData.roleData?.bannerImage ? (
+          <Image source={{ uri: userData.roleData.bannerImage }} style={styles.bannerImage} />
         ) : (
           <View style={styles.defaultBanner} />
         )}
@@ -62,13 +70,25 @@ export default function ProfileScreen() {
             )}
           </View>
           <Text style={styles.name}>
-            {userData.fightName || `${userData.firstName} ${userData.lastName}`}
+            {isFighter && userData.roleData?.fightName 
+              ? userData.roleData.fightName 
+              : isGym && userData.roleData?.gymName
+              ? userData.roleData.gymName
+              : `${userData.firstName} ${userData.lastName}`
+            }
           </Text>
+          {isFighter && userData.roleData?.fightName && (
+            <Text style={styles.realName}>
+              {userData.firstName} {userData.lastName}
+            </Text>
+          )}
           <View style={styles.roleContainer}>
             {isFighter ? (
               <Shield size={20} color="#1a1a1a" />
-            ) : (
+            ) : isPromoter ? (
               <Trophy size={20} color="#1a1a1a" />
+            ) : (
+              <Building2 size={20} color="#1a1a1a" />
             )}
             <Text style={styles.role}>{userData.role}</Text>
           </View>
@@ -108,6 +128,14 @@ export default function ProfileScreen() {
                 <Text style={styles.statLabel}>Draws</Text>
               </View>
             </View>
+
+            {fighterStats.winStreak > 0 && (
+              <View style={styles.streakContainer}>
+                <Text style={styles.streakText}>
+                  🔥 {fighterStats.winStreak} fight win streak
+                </Text>
+              </View>
+            )}
 
             <View style={styles.winMethodsContainer}>
               <Text style={styles.winMethodsTitle}>Win Methods</Text>
@@ -175,7 +203,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Promoter Events Card */}
-        {!isFighter && (
+        {isPromoter && (
           <View style={styles.infoCard}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>My Events</Text>
@@ -190,18 +218,18 @@ export default function ProfileScreen() {
             
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{promoterEvents?.length || 0}</Text>
+                <Text style={styles.statValue}>{userStats?.totalEvents || 0}</Text>
                 <Text style={styles.statLabel}>Total Events</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: '#FFD700' }]}>
-                  {promoterEvents?.filter(e => e.status === 'Upcoming').length || 0}
+                  {userStats?.upcomingEvents || 0}
                 </Text>
                 <Text style={styles.statLabel}>Upcoming</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: '#4CAF50' }]}>
-                  {promoterEvents?.filter(e => e.status === 'Completed').length || 0}
+                  {userStats?.completedEvents || 0}
                 </Text>
                 <Text style={styles.statLabel}>Completed</Text>
               </View>
@@ -214,6 +242,34 @@ export default function ProfileScreen() {
               <CalendarPlus size={20} color="#1a1a1a" />
               <Text style={styles.createEventText}>Create New Event</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Gym Stats Card */}
+        {isGym && (
+          <View style={styles.infoCard}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Gym Overview</Text>
+            </View>
+            
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{userStats?.totalMembers || 0}</Text>
+                <Text style={styles.statLabel}>Active Members</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: '#4CAF50' }]}>
+                  {userData.roleData?.staff?.length || 0}
+                </Text>
+                <Text style={styles.statLabel}>Staff</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: '#2196F3' }]}>
+                  {userData.roleData?.disciplines?.length || 0}
+                </Text>
+                <Text style={styles.statLabel}>Disciplines</Text>
+              </View>
+            </View>
           </View>
         )}
 
@@ -248,55 +304,61 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {userData.age && (
+          {userData.roleData?.age && (
             <View style={styles.infoItem}>
               <User size={20} color="#FFD700" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Age</Text>
-                <Text style={styles.infoValue}>{userData.age} years old</Text>
+                <Text style={styles.infoValue}>{userData.roleData.age} years old</Text>
               </View>
             </View>
           )}
 
-          {userData.gym && (
+          {userData.roleData?.gym && (
             <View style={styles.infoItem}>
               <MapPin size={20} color="#FFD700" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Gym</Text>
-                <Text style={styles.infoValue}>{userData.gym}</Text>
+                <Text style={styles.infoValue}>{userData.roleData.gym}</Text>
               </View>
             </View>
           )}
 
-          {userData.headCoach && (
+          {userData.roleData?.headCoach && (
             <View style={styles.infoItem}>
               <Users size={20} color="#FFD700" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Head Coach</Text>
-                <Text style={styles.infoValue}>{userData.headCoach}</Text>
+                <Text style={styles.infoValue}>{userData.roleData.headCoach}</Text>
               </View>
             </View>
           )}
         </View>
 
         {/* Fighter Specific Info */}
-        {isFighter && (
+        {isFighter && userData.roleData && (
           <>
             {/* Physical Stats */}
-            {(userData.height || userData.weight) && (
+            {(userData.roleData.height || userData.roleData.weight) && (
               <View style={styles.infoCard}>
                 <Text style={styles.cardTitle}>Physical Stats</Text>
                 <View style={styles.statsRow}>
-                  {userData.height && (
+                  {userData.roleData.height && (
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{userData.height}"</Text>
+                      <Text style={styles.statValue}>{userData.roleData.height}"</Text>
                       <Text style={styles.statLabel}>Height</Text>
                     </View>
                   )}
-                  {userData.weight && (
+                  {userData.roleData.weight && (
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{userData.weight} lbs</Text>
+                      <Text style={styles.statValue}>{userData.roleData.weight} lbs</Text>
                       <Text style={styles.statLabel}>Weight</Text>
+                    </View>
+                  )}
+                  {userData.roleData.reach && (
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{userData.roleData.reach}"</Text>
+                      <Text style={styles.statLabel}>Reach</Text>
                     </View>
                   )}
                 </View>
@@ -304,11 +366,11 @@ export default function ProfileScreen() {
             )}
 
             {/* Disciplines */}
-            {userData.disciplines && userData.disciplines.length > 0 && (
+            {userData.roleData.disciplines && userData.roleData.disciplines.length > 0 && (
               <View style={styles.infoCard}>
                 <Text style={styles.cardTitle}>Fighting Disciplines</Text>
                 <View style={styles.disciplinesContainer}>
-                  {userData.disciplines.map((discipline, index) => (
+                  {userData.roleData.disciplines.map((discipline, index) => (
                     <View key={index} style={styles.disciplineTag}>
                       <Dumbbell size={16} color="#1a1a1a" />
                       <Text style={styles.disciplineText}>{discipline}</Text>
@@ -321,38 +383,41 @@ export default function ProfileScreen() {
         )}
 
         {/* Social Media */}
-        {userData.socials && (
+        {userData.roleData?.socials && (
           <View style={styles.infoCard}>
             <Text style={styles.cardTitle}>Social Media</Text>
-            {userData.socials.instagram && (
+            {userData.roleData.socials.instagram && (
               <TouchableOpacity style={styles.socialItem}>
                 <Image
                   source={{ uri: 'https://img.icons8.com/fluency/48/instagram-new.png' }}
                   style={styles.socialIcon}
                 />
-                <Text style={styles.socialText}>@{userData.socials.instagram}</Text>
+                <Text style={styles.socialText}>@{userData.roleData.socials.instagram}</Text>
               </TouchableOpacity>
             )}
-            {userData.socials.facebook && (
+            {userData.roleData.socials.facebook && (
               <TouchableOpacity style={styles.socialItem}>
                 <Image
                   source={{ uri: 'https://img.icons8.com/fluency/48/facebook-new.png' }}
                   style={styles.socialIcon}
                 />
-                <Text style={styles.socialText}>{userData.socials.facebook}</Text>
+                <Text style={styles.socialText}>{userData.roleData.socials.facebook}</Text>
               </TouchableOpacity>
             )}
-            {userData.socials.youtube && (
+            {userData.roleData.socials.youtube && (
               <TouchableOpacity style={styles.socialItem}>
                 <Image
                   source={{ uri: 'https://img.icons8.com/fluency/48/youtube-play.png' }}
                   style={styles.socialIcon}
                 />
-                <Text style={styles.socialText}>{userData.socials.youtube}</Text>
+                <Text style={styles.socialText}>{userData.roleData.socials.youtube}</Text>
               </TouchableOpacity>
             )}
           </View>
         )}
+
+        {/* Bottom spacing for tab bar */}
+        <View style={styles.bottomSpacing} />
       </View>
     </ScrollView>
   );
@@ -363,6 +428,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a1a',
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 100,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -372,6 +441,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#ccc',
+    marginTop: 16,
   },
   header: {
     position: 'relative',
@@ -431,11 +501,17 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 4,
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
+  },
+  realName: {
+    fontSize: 16,
+    color: '#ccc',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   roleContainer: {
     flexDirection: 'row',
@@ -523,6 +599,18 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: '#ccc',
+  },
+  streakContainer: {
+    backgroundColor: '#333',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  streakText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFD700',
   },
   winMethodsContainer: {
     borderTopWidth: 1,
@@ -677,5 +765,8 @@ const styles = StyleSheet.create({
   socialText: {
     fontSize: 16,
     color: '#fff',
+  },
+  bottomSpacing: {
+    height: 40,
   },
 });
