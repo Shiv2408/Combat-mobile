@@ -154,7 +154,7 @@ export const getAllFighters = query({
     
     let baseQuery = ctx.db
       .query("fighters")
-      .filter((q) => q.eq(q.field("isActive"), true))
+      
       .order("desc");
 
     let fighters;

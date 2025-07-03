@@ -158,7 +158,7 @@ export default function FighterProfile({ userData }: FighterProfileProps) {
             <Text style={styles.cardTitle}>Profile Information</Text>
             <TouchableOpacity
               style={styles.editButton}
-              onPress={() => router.push('/edit-profile')}
+              onPress={() => router.push('/editProfile/FighterEditProfile')}
             >
               <Edit size={18} color="#FFD700" />
               <Text style={styles.editButtonText}>Edit</Text>

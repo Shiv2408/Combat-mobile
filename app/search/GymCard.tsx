@@ -34,10 +34,7 @@ export default function GymCard({ gym, onPress }: GymCardProps) {
           <View style={styles.gymInfoSection}>
             <View style={styles.nameContainer}>
               <Text style={styles.gymName}>{gym.gymName}</Text>
-              <View style={styles.gymBadge}>
-                <Building2 size={12} color="#1a1a1a" strokeWidth={2.5} />
-                <Text style={styles.roleBadgeText}>Gym</Text>
-              </View>
+              
             </View>
 
             {gym.staff && (
@@ -148,13 +145,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   viewButton: {
-    padding: 14,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 20,
     backgroundColor: '#333',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+    borderWidth: 1,
+    borderColor: '#444',
   },
 });

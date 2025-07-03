@@ -126,3 +126,18 @@ export const getFighterStats = query({
     return stats;
   },
 });
+
+export const getRecentFights = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 10;
+    
+    const fights = await ctx.db
+      .query("fightsRecord")
+      .filter((q) => q.eq(q.field("isVerified"), true))
+      .order("desc")
+      .take(limit);
+
+    return fights;
+  },
+});

@@ -91,19 +91,26 @@ export const createGymProfile = mutation({
 export const getGymProfile = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .first();
-
-    if (!user || user.role !== "Gym") return null;
-
+    
     const gym = await ctx.db
       .query("gyms")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
-    return gym ? { ...user, ...gym } : user;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!gym || !user) return null;
+
+    return {
+      ...gym,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      profileImage: user.profileImage,
+    };
   },
 });
 

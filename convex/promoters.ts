@@ -64,19 +64,25 @@ export const createPromoterProfile = mutation({
 export const getPromoterProfile = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .first();
-
-    if (!user || user.role !== "Promoter") return null;
-
+    
     const promoter = await ctx.db
       .query("promoters")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
-    return promoter ? { ...user, ...promoter } : user;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!promoter || !user) return null;
+
+    return {
+      ...promoter,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+    };
   },
 });
 

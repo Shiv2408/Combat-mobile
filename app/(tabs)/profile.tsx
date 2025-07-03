@@ -2,8 +2,8 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import FighterProfile from '../fighter-profile';
-import PromoterProfile from '../promoter-profile';
+import FighterProfile from '../profile/fighter-profile';
+import PromoterProfile from '../profile/promoter-profile';
 import React from 'react';
 
 export default function ProfileScreen() {

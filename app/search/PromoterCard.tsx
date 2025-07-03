@@ -44,10 +44,7 @@ export default function PromoterCard({ promoter, onPress }: PromoterCardProps) {
               <Text style={styles.promoterName}>
                 {`${promoter.firstName} ${promoter.lastName}`}
               </Text>
-              <View style={styles.promoterBadge}>
-                <Trophy size={12} color="#1a1a1a" strokeWidth={2.5} />
-                <Text style={styles.roleBadgeText}>Promoter</Text>
-              </View>
+             
             </View>
 
             {promoter.gym && (
@@ -192,14 +189,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   viewButton: {
-    padding: 14,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 20,
     backgroundColor: '#333',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+    borderWidth: 1,
+    borderColor: '#444',
+
   },
   statsContainer: {
     marginBottom: 16,
