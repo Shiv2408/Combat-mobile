@@ -4,16 +4,13 @@ import { useUser } from '@clerk/clerk-expo';
 import { useQuery } from 'convex/react';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Shield, Trophy, Calendar, Users, Target, Zap, LogIn, UserPlus, ArrowRight, MapPin, Clock, Building2, Star, TrendingUp } from 'lucide-react-native';
+import { Shield, Trophy, Calendar, Users, Target, Zap, LogIn, UserPlus, ArrowRight, MapPin, Clock, Building2, Star, TrendingUp, Sparkles, Globe, Award } from 'lucide-react-native';
 import { api } from '@/convex/_generated/api';
-import AuthModal from '../components/AuthModal';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const { user, isLoaded } = useUser();
-  const [authModalVisible, setAuthModalVisible] = useState(false);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [isNavigating, setIsNavigating] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [randomCards, setRandomCards] = useState<{
@@ -42,7 +39,7 @@ export default function HomeScreen() {
     }
   }, [isLoaded]);
 
-  // Handle navigation after authentication
+  // Handle navigation after authentication - redirect existing users directly to profile
   useEffect(() => {
     if (initialLoadComplete && user && userData && !isNavigating) {
       setIsNavigating(true);
@@ -93,12 +90,13 @@ export default function HomeScreen() {
     return (
       <View style={styles.loadingContainer}>
         <LinearGradient
-          colors={['#1a1a1a', '#2a2a2a', '#1a1a1a']}
+          colors={['#0a0a0a', '#1a1a1a', '#2a2a2a', '#1a1a1a', '#0a0a0a']}
           style={styles.loadingGradient}
         >
           <View style={styles.loadingContent}>
             <View style={styles.logoContainer}>
               <Shield size={60} color="#FFD700" />
+              <View style={styles.loadingPulse} />
             </View>
             <Text style={styles.loadingTitle}>Combat Domain</Text>
             <ActivityIndicator size="large" color="#FFD700" style={styles.loadingSpinner} />
@@ -121,20 +119,6 @@ export default function HomeScreen() {
     return null;
   }
 
-  const handleAuthAction = (mode: 'signin' | 'signup') => {
-    setAuthMode(mode);
-    setAuthModalVisible(true);
-  };
-
-  const handleProtectedAction = (action: () => void) => {
-    if (user) {
-      action();
-    } else {
-      setAuthMode('signin');
-      setAuthModalVisible(true);
-    }
-  };
-
   // Calculate statistics
   const totalFighters = Array.isArray(allFighters) ? allFighters.length : allFighters?.page?.length || 0;
   const totalEvents = allEvents?.length || 0;
@@ -149,45 +133,65 @@ export default function HomeScreen() {
     >
       {/* Hero Section */}
       <LinearGradient
-        colors={['#1a1a1a', '#2a2a2a', '#1a1a1a']}
+        colors={['#0a0a0a', '#1a1a1a', '#2a2a2a']}
         style={styles.hero}
       >
         <View style={styles.heroContent}>
           <View style={styles.brandContainer}>
             <View style={styles.logo}>
               <Shield size={50} color="#FFD700" />
+              <View style={styles.logoPulse} />
             </View>
-            <Text style={styles.logoText}>Combat Domain</Text>
+            <View>
+              <Text style={styles.logoText}>Combat Domain</Text>
+              <Text style={styles.logoSubtext}>Elite Fighting Platform</Text>
+            </View>
           </View>
           
           <Text style={styles.heroTitle}>
-            The Ultimate Fighting{'\n'}Community Platform
+            Where Champions{'\n'}Are Born
           </Text>
           
           <Text style={styles.heroSubtitle}>
-            Connect fighters, promoters, and fans in one powerful platform. 
-            Track records, organize events, and build your fighting legacy.
+            Join the world's most advanced fighting community platform. 
+            Connect with elite fighters, organize legendary events, and build your combat legacy.
           </Text>
 
           <View style={styles.heroButtons}>
             <TouchableOpacity 
               style={styles.primaryButton}
-              onPress={() => handleAuthAction('signup')}
+              onPress={() => router.push('/sign-up')}
               activeOpacity={0.8}
             >
               <UserPlus size={20} color="#1a1a1a" />
-              <Text style={styles.primaryButtonText}>Get Started</Text>
+              <Text style={styles.primaryButtonText}>Start Your Journey</Text>
               <ArrowRight size={16} color="#1a1a1a" />
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.secondaryButton}
-              onPress={() => handleAuthAction('signin')}
+              onPress={() => router.push('/sign-in')}
               activeOpacity={0.8}
             >
               <LogIn size={20} color="#FFD700" />
               <Text style={styles.secondaryButtonText}>Sign In</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Floating Stats */}
+          <View style={styles.floatingStats}>
+            <View style={styles.floatingStat}>
+              <Text style={styles.floatingStatNumber}>{totalFighters}+</Text>
+              <Text style={styles.floatingStatLabel}>Elite Fighters</Text>
+            </View>
+            <View style={styles.floatingStat}>
+              <Text style={styles.floatingStatNumber}>{upcomingEvents}+</Text>
+              <Text style={styles.floatingStatLabel}>Live Events</Text>
+            </View>
+            <View style={styles.floatingStat}>
+              <Text style={styles.floatingStatNumber}>{totalGyms}+</Text>
+              <Text style={styles.floatingStatLabel}>Training Centers</Text>
+            </View>
           </View>
         </View>
 
@@ -197,47 +201,61 @@ export default function HomeScreen() {
             style={styles.heroImage}
           />
           <View style={styles.heroImageOverlay} />
+          <View style={styles.heroImageGlow} />
         </View>
       </LinearGradient>
 
       {/* Dynamic Statistics Section */}
       <View style={styles.statsSection}>
         <View style={styles.statsHeader}>
-          <TrendingUp size={32} color="#FFD700" />
-          <Text style={styles.statsTitle}>Live Community Stats</Text>
+          <View style={styles.statsIconContainer}>
+            <TrendingUp size={32} color="#FFD700" />
+            <Sparkles size={20} color="#FFD700" style={styles.sparkleIcon} />
+          </View>
+          <Text style={styles.statsTitle}>Live Community Pulse</Text>
+          <Text style={styles.statsSubtitle}>Real-time insights from our global fighting network</Text>
         </View>
         
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <LinearGradient
-              colors={['#FFD700', '#FFA500']}
+              colors={['#FFD700', '#FFA500', '#FF8C00']}
               style={styles.statGradient}
             >
-              <Shield size={28} color="#1a1a1a" />
+              <Shield size={32} color="#1a1a1a" />
               <Text style={styles.statNumber}>{totalFighters}</Text>
-              <Text style={styles.statLabel}>Active Fighters</Text>
+              <Text style={styles.statLabel}>Elite Fighters</Text>
+              <View style={styles.statBadge}>
+                <Text style={styles.statBadgeText}>+12% this month</Text>
+              </View>
             </LinearGradient>
           </View>
           
           <View style={styles.statCard}>
             <LinearGradient
-              colors={['#4CAF50', '#45a049']}
+              colors={['#4CAF50', '#45a049', '#388e3c']}
               style={styles.statGradient}
             >
-              <Calendar size={28} color="#fff" />
+              <Calendar size={32} color="#fff" />
               <Text style={[styles.statNumber, { color: '#fff' }]}>{upcomingEvents}</Text>
-              <Text style={[styles.statLabel, { color: '#fff' }]}>Upcoming Events</Text>
+              <Text style={[styles.statLabel, { color: '#fff' }]}>Live Events</Text>
+              <View style={[styles.statBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                <Text style={[styles.statBadgeText, { color: '#fff' }]}>This week</Text>
+              </View>
             </LinearGradient>
           </View>
           
           <View style={styles.statCard}>
             <LinearGradient
-              colors={['#2196F3', '#1976D2']}
+              colors={['#2196F3', '#1976D2', '#1565C0']}
               style={styles.statGradient}
             >
-              <Building2 size={28} color="#fff" />
+              <Building2 size={32} color="#fff" />
               <Text style={[styles.statNumber, { color: '#fff' }]}>{totalGyms}</Text>
-              <Text style={[styles.statLabel, { color: '#fff' }]}>Training Gyms</Text>
+              <Text style={[styles.statLabel, { color: '#fff' }]}>Training Centers</Text>
+              <View style={[styles.statBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                <Text style={[styles.statBadgeText, { color: '#fff' }]}>Worldwide</Text>
+              </View>
             </LinearGradient>
           </View>
         </View>
@@ -246,9 +264,12 @@ export default function HomeScreen() {
       {/* Random Featured Cards Section */}
       {randomCards && (
         <View style={styles.featuredSection}>
-          <Text style={styles.sectionTitle}>Featured Today</Text>
+          <View style={styles.featuredHeader}>
+            <Star size={28} color="#FFD700" />
+            <Text style={styles.sectionTitle}>Featured Champions</Text>
+          </View>
           <Text style={styles.sectionSubtitle}>
-            Discover amazing fighters, events, and gyms from our community
+            Discover today's spotlight: exceptional fighters, epic events, and world-class training facilities
           </Text>
           
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cardsContainer}>
@@ -256,46 +277,51 @@ export default function HomeScreen() {
             {randomCards.fighter && (
               <TouchableOpacity 
                 style={styles.featuredCard}
-                onPress={() => handleProtectedAction(() => router.push(`/user-profile?id=${randomCards.fighter.clerkId}`))}
+                onPress={() => router.push('/sign-in')}
                 activeOpacity={0.9}
               >
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardAvatar}>
-                    <Text style={styles.cardAvatarText}>
-                      {randomCards.fighter.firstName?.[0]}{randomCards.fighter.lastName?.[0]}
-                    </Text>
+                <LinearGradient
+                  colors={['#2a2a2a', '#1a1a1a']}
+                  style={styles.cardGradient}
+                >
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardAvatar}>
+                      <Text style={styles.cardAvatarText}>
+                        {randomCards.fighter.firstName?.[0]}{randomCards.fighter.lastName?.[0]}
+                      </Text>
+                    </View>
+                    <View style={styles.cardBadge}>
+                      <Shield size={12} color="#1a1a1a" />
+                      <Text style={styles.cardBadgeText}>Fighter</Text>
+                    </View>
                   </View>
-                  <View style={styles.cardBadge}>
-                    <Shield size={12} color="#1a1a1a" />
-                    <Text style={styles.cardBadgeText}>Fighter</Text>
+                  
+                  <Text style={styles.cardTitle}>
+                    {randomCards.fighter.fightName || `${randomCards.fighter.firstName} ${randomCards.fighter.lastName}`}
+                  </Text>
+                  
+                  {randomCards.fighter.gym && (
+                    <View style={styles.cardDetail}>
+                      <MapPin size={14} color="#ccc" />
+                      <Text style={styles.cardDetailText}>{randomCards.fighter.gym}</Text>
+                    </View>
+                  )}
+                  
+                  {randomCards.fighter.disciplines && randomCards.fighter.disciplines.length > 0 && (
+                    <View style={styles.disciplinesContainer}>
+                      {randomCards.fighter.disciplines.slice(0, 2).map((discipline: string, index: number) => (
+                        <View key={index} style={styles.disciplineTag}>
+                          <Text style={styles.disciplineText}>{discipline}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  
+                  <View style={styles.cardFooter}>
+                    <Award size={16} color="#FFD700" />
+                    <Text style={styles.cardFooterText}>Featured Champion</Text>
                   </View>
-                </View>
-                
-                <Text style={styles.cardTitle}>
-                  {randomCards.fighter.fightName || `${randomCards.fighter.firstName} ${randomCards.fighter.lastName}`}
-                </Text>
-                
-                {randomCards.fighter.gym && (
-                  <View style={styles.cardDetail}>
-                    <MapPin size={14} color="#ccc" />
-                    <Text style={styles.cardDetailText}>{randomCards.fighter.gym}</Text>
-                  </View>
-                )}
-                
-                {randomCards.fighter.disciplines && randomCards.fighter.disciplines.length > 0 && (
-                  <View style={styles.disciplinesContainer}>
-                    {randomCards.fighter.disciplines.slice(0, 2).map((discipline: string, index: number) => (
-                      <View key={index} style={styles.disciplineTag}>
-                        <Text style={styles.disciplineText}>{discipline}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-                
-                <View style={styles.cardFooter}>
-                  <Star size={16} color="#FFD700" />
-                  <Text style={styles.cardFooterText}>Featured Fighter</Text>
-                </View>
+                </LinearGradient>
               </TouchableOpacity>
             )}
 
@@ -303,38 +329,43 @@ export default function HomeScreen() {
             {randomCards.event && (
               <TouchableOpacity 
                 style={styles.featuredCard}
-                onPress={() => handleProtectedAction(() => router.push(`/event-details?id=${randomCards.event._id}`))}
+                onPress={() => router.push('/sign-in')}
                 activeOpacity={0.9}
               >
-                <View style={styles.cardHeader}>
-                  <Image
-                    source={{ uri: 'https://images.pexels.com/photos/4761663/pexels-photo-4761663.jpeg?auto=compress&cs=tinysrgb&w=100' }}
-                    style={styles.cardImage}
-                  />
-                  <View style={[styles.cardBadge, { backgroundColor: '#4CAF50' }]}>
-                    <Calendar size={12} color="#fff" />
-                    <Text style={[styles.cardBadgeText, { color: '#fff' }]}>Event</Text>
+                <LinearGradient
+                  colors={['#2a2a2a', '#1a1a1a']}
+                  style={styles.cardGradient}
+                >
+                  <View style={styles.cardHeader}>
+                    <Image
+                      source={{ uri: 'https://images.pexels.com/photos/4761663/pexels-photo-4761663.jpeg?auto=compress&cs=tinysrgb&w=100' }}
+                      style={styles.cardImage}
+                    />
+                    <View style={[styles.cardBadge, { backgroundColor: '#4CAF50' }]}>
+                      <Calendar size={12} color="#fff" />
+                      <Text style={[styles.cardBadgeText, { color: '#fff' }]}>Event</Text>
+                    </View>
                   </View>
-                </View>
-                
-                <Text style={styles.cardTitle}>{randomCards.event.eventName}</Text>
-                
-                <View style={styles.cardDetail}>
-                  <Clock size={14} color="#ccc" />
-                  <Text style={styles.cardDetailText}>{randomCards.event.eventDate}</Text>
-                </View>
-                
-                <View style={styles.cardDetail}>
-                  <MapPin size={14} color="#ccc" />
-                  <Text style={styles.cardDetailText}>
-                    {randomCards.event.venue}, {randomCards.event.city}
-                  </Text>
-                </View>
-                
-                <View style={styles.cardFooter}>
-                  <Star size={16} color="#FFD700" />
-                  <Text style={styles.cardFooterText}>Featured Event</Text>
-                </View>
+                  
+                  <Text style={styles.cardTitle}>{randomCards.event.eventName}</Text>
+                  
+                  <View style={styles.cardDetail}>
+                    <Clock size={14} color="#ccc" />
+                    <Text style={styles.cardDetailText}>{randomCards.event.eventDate}</Text>
+                  </View>
+                  
+                  <View style={styles.cardDetail}>
+                    <MapPin size={14} color="#ccc" />
+                    <Text style={styles.cardDetailText}>
+                      {randomCards.event.venue}, {randomCards.event.city}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.cardFooter}>
+                    <Trophy size={16} color="#FFD700" />
+                    <Text style={styles.cardFooterText}>Epic Showdown</Text>
+                  </View>
+                </LinearGradient>
               </TouchableOpacity>
             )}
 
@@ -342,46 +373,51 @@ export default function HomeScreen() {
             {randomCards.gym && (
               <TouchableOpacity 
                 style={styles.featuredCard}
-                onPress={() => handleProtectedAction(() => router.push(`/user-profile?id=${randomCards.gym.clerkId}`))}
+                onPress={() => router.push('/sign-in')}
                 activeOpacity={0.9}
               >
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardAvatar}>
-                    <Text style={styles.cardAvatarText}>
-                      {randomCards.gym.gymName?.[0] || 'G'}
-                    </Text>
+                <LinearGradient
+                  colors={['#2a2a2a', '#1a1a1a']}
+                  style={styles.cardGradient}
+                >
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardAvatar}>
+                      <Text style={styles.cardAvatarText}>
+                        {randomCards.gym.gymName?.[0] || 'G'}
+                      </Text>
+                    </View>
+                    <View style={[styles.cardBadge, { backgroundColor: '#2196F3' }]}>
+                      <Building2 size={12} color="#fff" />
+                      <Text style={[styles.cardBadgeText, { color: '#fff' }]}>Gym</Text>
+                    </View>
                   </View>
-                  <View style={[styles.cardBadge, { backgroundColor: '#2196F3' }]}>
-                    <Building2 size={12} color="#fff" />
-                    <Text style={[styles.cardBadgeText, { color: '#fff' }]}>Gym</Text>
+                  
+                  <Text style={styles.cardTitle}>{randomCards.gym.gymName}</Text>
+                  
+                  {randomCards.gym.address?.city && (
+                    <View style={styles.cardDetail}>
+                      <Globe size={14} color="#ccc" />
+                      <Text style={styles.cardDetailText}>
+                        {randomCards.gym.address.city}, {randomCards.gym.address.country}
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {randomCards.gym.disciplines && randomCards.gym.disciplines.length > 0 && (
+                    <View style={styles.disciplinesContainer}>
+                      {randomCards.gym.disciplines.slice(0, 2).map((discipline: string, index: number) => (
+                        <View key={index} style={styles.disciplineTag}>
+                          <Text style={styles.disciplineText}>{discipline}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  
+                  <View style={styles.cardFooter}>
+                    <Target size={16} color="#FFD700" />
+                    <Text style={styles.cardFooterText}>Elite Training</Text>
                   </View>
-                </View>
-                
-                <Text style={styles.cardTitle}>{randomCards.gym.gymName}</Text>
-                
-                {randomCards.gym.address?.city && (
-                  <View style={styles.cardDetail}>
-                    <MapPin size={14} color="#ccc" />
-                    <Text style={styles.cardDetailText}>
-                      {randomCards.gym.address.city}, {randomCards.gym.address.country}
-                    </Text>
-                  </View>
-                )}
-                
-                {randomCards.gym.disciplines && randomCards.gym.disciplines.length > 0 && (
-                  <View style={styles.disciplinesContainer}>
-                    {randomCards.gym.disciplines.slice(0, 2).map((discipline: string, index: number) => (
-                      <View key={index} style={styles.disciplineTag}>
-                        <Text style={styles.disciplineText}>{discipline}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-                
-                <View style={styles.cardFooter}>
-                  <Star size={16} color="#FFD700" />
-                  <Text style={styles.cardFooterText}>Featured Gym</Text>
-                </View>
+                </LinearGradient>
               </TouchableOpacity>
             )}
           </ScrollView>
@@ -390,151 +426,136 @@ export default function HomeScreen() {
 
       {/* Features Section */}
       <View style={styles.featuresSection}>
-        <Text style={styles.sectionTitle}>Why Choose Combat Domain?</Text>
+        <Text style={styles.sectionTitle}>Why Elite Fighters Choose Us</Text>
         <Text style={styles.sectionSubtitle}>
-          Everything you need to succeed in the fighting world
+          Advanced tools and features designed for champions
         </Text>
         
         <View style={styles.featuresGrid}>
           <TouchableOpacity 
             style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/(tabs)'))}
+            onPress={() => router.push('/sign-up')}
             activeOpacity={0.9}
           >
-            <View style={styles.featureIconContainer}>
-              <Shield size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Fighter Profiles</Text>
-            <Text style={styles.featureDescription}>
-              Create comprehensive fighter profiles with records, achievements, and career stats
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
+            <LinearGradient
+              colors={['#2a2a2a', '#1a1a1a']}
+              style={styles.featureGradient}
+            >
+              <View style={styles.featureIconContainer}>
+                <Shield size={32} color="#FFD700" />
+              </View>
+              <Text style={styles.featureTitle}>Elite Profiles</Text>
+              <Text style={styles.featureDescription}>
+                Showcase your fighting career with comprehensive stats, achievements, and verified records
+              </Text>
+              <View style={styles.featureArrow}>
+                <ArrowRight size={16} color="#FFD700" />
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/create-event'))}
+            onPress={() => router.push('/sign-up')}
             activeOpacity={0.9}
           >
-            <View style={styles.featureIconContainer}>
-              <Trophy size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Event Management</Text>
-            <Text style={styles.featureDescription}>
-              Organize and promote fighting events with complete venue and participant management
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
+            <LinearGradient
+              colors={['#2a2a2a', '#1a1a1a']}
+              style={styles.featureGradient}
+            >
+              <View style={styles.featureIconContainer}>
+                <Trophy size={32} color="#FFD700" />
+              </View>
+              <Text style={styles.featureTitle}>Event Mastery</Text>
+              <Text style={styles.featureDescription}>
+                Organize world-class fighting events with professional-grade management tools
+              </Text>
+              <View style={styles.featureArrow}>
+                <ArrowRight size={16} color="#FFD700" />
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/(tabs)/calendar'))}
+            onPress={() => router.push('/sign-up')}
             activeOpacity={0.9}
           >
-            <View style={styles.featureIconContainer}>
-              <Calendar size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Event Calendar</Text>
-            <Text style={styles.featureDescription}>
-              Never miss a fight with our comprehensive calendar of upcoming events
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
+            <LinearGradient
+              colors={['#2a2a2a', '#1a1a1a']}
+              style={styles.featureGradient}
+            >
+              <View style={styles.featureIconContainer}>
+                <Users size={32} color="#FFD700" />
+              </View>
+              <Text style={styles.featureTitle}>Global Network</Text>
+              <Text style={styles.featureDescription}>
+                Connect with fighters, promoters, and gyms from around the world
+              </Text>
+              <View style={styles.featureArrow}>
+                <ArrowRight size={16} color="#FFD700" />
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/(tabs)/community'))}
+            onPress={() => router.push('/sign-up')}
             activeOpacity={0.9}
           >
-            <View style={styles.featureIconContainer}>
-              <Users size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Community</Text>
-            <Text style={styles.featureDescription}>
-              Connect with fighters, promoters, and fans from around the world
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/fight-records'))}
-            activeOpacity={0.9}
-          >
-            <View style={styles.featureIconContainer}>
-              <Target size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Fight Records</Text>
-            <Text style={styles.featureDescription}>
-              Track detailed fight history with wins, losses, methods, and video links
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.featureCard}
-            onPress={() => handleProtectedAction(() => router.push('/all-events'))}
-            activeOpacity={0.9}
-          >
-            <View style={styles.featureIconContainer}>
-              <Zap size={32} color="#FFD700" />
-            </View>
-            <Text style={styles.featureTitle}>Real-time Updates</Text>
-            <Text style={styles.featureDescription}>
-              Get instant updates on fight results, event changes, and community activity
-            </Text>
-            <View style={styles.featureArrow}>
-              <ArrowRight size={16} color="#FFD700" />
-            </View>
+            <LinearGradient
+              colors={['#2a2a2a', '#1a1a1a']}
+              style={styles.featureGradient}
+            >
+              <View style={styles.featureIconContainer}>
+                <Zap size={32} color="#FFD700" />
+              </View>
+              <Text style={styles.featureTitle}>Real-time Intel</Text>
+              <Text style={styles.featureDescription}>
+                Get instant updates on fights, rankings, and industry developments
+              </Text>
+              <View style={styles.featureArrow}>
+                <ArrowRight size={16} color="#FFD700" />
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* CTA Section */}
-      <View style={styles.ctaSection}>
-        <Text style={styles.ctaTitle}>Ready to Start Your Journey?</Text>
-        <Text style={styles.ctaSubtitle}>
-          Join thousands of fighters and promoters building their legacy
-        </Text>
-        
-        <View style={styles.ctaButtons}>
-          <TouchableOpacity 
-            style={styles.ctaPrimaryButton}
-            onPress={() => handleAuthAction('signup')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.ctaPrimaryButtonText}>Create Account</Text>
-            <ArrowRight size={20} color="#1a1a1a" />
-          </TouchableOpacity>
+      <LinearGradient
+        colors={['#1a1a1a', '#2a2a2a', '#1a1a1a']}
+        style={styles.ctaSection}
+      >
+        <View style={styles.ctaContent}>
+          <Text style={styles.ctaTitle}>Ready to Join the Elite?</Text>
+          <Text style={styles.ctaSubtitle}>
+            Become part of the world's most exclusive fighting community
+          </Text>
           
-          <TouchableOpacity 
-            style={styles.ctaSecondaryButton}
-            onPress={() => handleAuthAction('signin')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.ctaSecondaryButtonText}>Sign In</Text>
-          </TouchableOpacity>
+          <View style={styles.ctaButtons}>
+            <TouchableOpacity 
+              style={styles.ctaPrimaryButton}
+              onPress={() => router.push('/sign-up')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.ctaPrimaryButtonText}>Start Your Legacy</Text>
+              <ArrowRight size={20} color="#1a1a1a" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.ctaSecondaryButton}
+              onPress={() => router.push('/sign-in')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.ctaSecondaryButtonText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Bottom spacing for better scrolling */}
       <View style={styles.bottomSpacing} />
-
-      <AuthModal 
-        visible={authModalVisible}
-        onClose={() => setAuthModalVisible(false)}
-        initialMode={authMode}
-      />
     </ScrollView>
   );
 }
@@ -542,14 +563,14 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#0a0a0a',
   },
   scrollContent: {
     flexGrow: 1,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#0a0a0a',
   },
   loadingGradient: {
     flex: 1,
@@ -570,6 +591,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderWidth: 2,
     borderColor: 'rgba(255, 215, 0, 0.3)',
+    position: 'relative',
+  },
+  loadingPulse: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 215, 0, 0.2)',
   },
   loadingTitle: {
     fontSize: 32,
@@ -594,10 +624,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   hero: {
-    minHeight: 700,
+    minHeight: 800,
     paddingHorizontal: 24,
     paddingTop: 80,
-    paddingBottom: 60,
+    paddingBottom: 80,
     position: 'relative',
   },
   heroContent: {
@@ -607,7 +637,7 @@ const styles = StyleSheet.create({
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 50,
+    marginBottom: 60,
   },
   logo: {
     width: 70,
@@ -619,32 +649,48 @@ const styles = StyleSheet.create({
     marginRight: 16,
     borderWidth: 2,
     borderColor: 'rgba(255, 215, 0, 0.3)',
+    position: 'relative',
+  },
+  logoPulse: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.2)',
   },
   logoText: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#FFD700',
   },
+  logoSubtext: {
+    fontSize: 12,
+    color: '#ccc',
+    fontWeight: '500',
+  },
   heroTitle: {
-    fontSize: 42,
+    fontSize: 48,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 20,
-    lineHeight: 50,
+    marginBottom: 24,
+    lineHeight: 56,
   },
   heroSubtitle: {
     fontSize: 18,
     color: '#ccc',
-    lineHeight: 26,
+    lineHeight: 28,
     marginBottom: 50,
+    maxWidth: '90%',
   },
   heroButtons: {
     gap: 16,
+    marginBottom: 60,
   },
   primaryButton: {
     backgroundColor: '#FFD700',
     paddingHorizontal: 32,
-    paddingVertical: 18,
+    paddingVertical: 20,
     borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -652,9 +698,9 @@ const styles = StyleSheet.create({
     gap: 12,
     shadowColor: '#FFD700',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10,
   },
   primaryButtonText: {
     color: '#1a1a1a',
@@ -665,7 +711,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFD700',
     paddingHorizontal: 32,
-    paddingVertical: 18,
+    paddingVertical: 20,
     borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -678,11 +724,36 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  floatingStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  floatingStat: {
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    flex: 1,
+  },
+  floatingStatNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 4,
+  },
+  floatingStatLabel: {
+    fontSize: 12,
+    color: '#ccc',
+    textAlign: 'center',
+  },
   heroImageContainer: {
     position: 'absolute',
     top: 0,
     right: 0,
-    width: '60%',
+    width: '50%',
     height: '100%',
     borderRadius: 20,
     overflow: 'hidden',
@@ -697,24 +768,44 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(26, 26, 26, 0.7)',
+    backgroundColor: 'rgba(26, 26, 26, 0.8)',
+  },
+  heroImageGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
   },
   statsSection: {
     paddingHorizontal: 24,
-    paddingVertical: 60,
-    backgroundColor: '#2a2a2a',
+    paddingVertical: 80,
+    backgroundColor: '#1a1a1a',
   },
   statsHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 40,
-    gap: 12,
+    marginBottom: 50,
+  },
+  statsIconContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  sparkleIcon: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
   },
   statsTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
+    marginBottom: 8,
+  },
+  statsSubtitle: {
+    fontSize: 16,
+    color: '#ccc',
+    textAlign: 'center',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -726,15 +817,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10,
   },
   statGradient: {
     padding: 24,
     borderRadius: 20,
     alignItems: 'center',
     gap: 8,
+    position: 'relative',
   },
   statNumber: {
     fontSize: 32,
@@ -747,26 +839,48 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     textAlign: 'center',
   },
+  statBadge: {
+    backgroundColor: 'rgba(26, 26, 26, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  statBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
   featuredSection: {
-    paddingVertical: 60,
+    paddingVertical: 80,
     paddingLeft: 24,
+    backgroundColor: '#0a0a0a',
+  },
+  featuredHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
   },
   cardsContainer: {
     marginTop: 32,
   },
   featuredCard: {
-    width: 280,
-    backgroundColor: '#2a2a2a',
+    width: 300,
+    marginRight: 20,
     borderRadius: 20,
-    padding: 20,
-    marginRight: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  cardGradient: {
+    padding: 24,
     borderWidth: 1,
     borderColor: '#333',
+    borderRadius: 20,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -853,6 +967,7 @@ const styles = StyleSheet.create({
   featuresSection: {
     paddingHorizontal: 24,
     paddingVertical: 80,
+    backgroundColor: '#1a1a1a',
   },
   sectionTitle: {
     fontSize: 32,
@@ -875,16 +990,19 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     width: '48%',
-    backgroundColor: '#2a2a2a',
     borderRadius: 20,
-    padding: 24,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  featureGradient: {
+    padding: 24,
     borderWidth: 1,
     borderColor: '#333',
+    borderRadius: 20,
     position: 'relative',
   },
   featureIconContainer: {
@@ -917,10 +1035,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 80,
     alignItems: 'center',
-    backgroundColor: '#2a2a2a',
+  },
+  ctaContent: {
+    alignItems: 'center',
+    maxWidth: 600,
   },
   ctaTitle: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
@@ -948,9 +1069,9 @@ const styles = StyleSheet.create({
     gap: 12,
     shadowColor: '#FFD700',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10,
   },
   ctaPrimaryButtonText: {
     color: '#1a1a1a',

@@ -15,7 +15,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     return (
       <View style={styles.loadingContainer}>
         <LinearGradient
-          colors={['#1a1a1a', '#2a2a2a', '#1a1a1a']}
+          colors={['#0a0a0a', '#1a1a1a', '#2a2a2a']}
           style={styles.loadingGradient}
         >
           <View style={styles.logoContainer}>
@@ -32,13 +32,14 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     return (
       <View style={styles.container}>
         <LinearGradient
-          colors={['#1a1a1a', '#2a2a2a', '#1a1a1a']}
+          colors={['#0a0a0a', '#1a1a1a', '#2a2a2a']}
           style={styles.gradient}
         >
           {/* Hero Section */}
           <View style={styles.heroSection}>
             <View style={styles.logoContainer}>
               <Shield size={80} color="#FFD700" />
+              <View style={styles.logoGlow} />
             </View>
             
             <Text style={styles.title}>Access Restricted</Text>
@@ -68,7 +69,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
           <View style={styles.actionsContainer}>
             <TouchableOpacity 
               style={styles.primaryButton}
-              onPress={() => router.push('/')}
+              onPress={() => router.push('/sign-up')}
               activeOpacity={0.8}
             >
               <UserPlus size={20} color="#1a1a1a" />
@@ -78,7 +79,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             
             <TouchableOpacity 
               style={styles.secondaryButton}
-              onPress={() => router.push('/')}
+              onPress={() => router.push('/sign-in')}
               activeOpacity={0.8}
             >
               <LogIn size={20} color="#FFD700" />
@@ -113,11 +114,11 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#0a0a0a',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#0a0a0a',
   },
   loadingGradient: {
     flex: 1,
@@ -147,15 +148,24 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   logoContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     backgroundColor: 'rgba(255, 215, 0, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
     borderWidth: 2,
     borderColor: 'rgba(255, 215, 0, 0.3)',
+    position: 'relative',
+  },
+  logoGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.1)',
   },
   title: {
     fontSize: 36,
@@ -208,7 +218,7 @@ const styles = StyleSheet.create({
     gap: 12,
     shadowColor: '#FFD700',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 8,
   },

@@ -18,7 +18,8 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               await signOut();
-              // User will be redirected to AuthGuard automatically
+              // User will be redirected to homepage automatically
+              router.replace('/');
             } catch (error) {
               console.error('Error signing out:', error);
               Alert.alert('Error', 'Failed to sign out. Please try again.');
