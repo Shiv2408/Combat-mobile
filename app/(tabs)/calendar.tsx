@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Dimensions, Image } from 'react-native';
 import { useQuery } from 'convex/react';
 import { router } from 'expo-router';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, Clock, Users, X, Grid3x3, List, ChartBar as BarChart3, Eye } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, Clock, Users, X, Grid3x3, List, BarChart3, Eye, Filter, Search, Star } from 'lucide-react-native';
 import { api } from '@/convex/_generated/api';
+import Calendar from 'react-calendar';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
-const CELL_SIZE = (width - 48) / 7; // 7 days, 48px for padding
+
+type ValuePiece = Date | null;
+type Value = ValuePiece | [ValuePiece, ValuePiece];
 
 export default function CalendarScreen() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Value>(new Date());
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('month');
+  const [viewMode, setViewMode] = useState<'calendar' | 'upcoming'>('calendar');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'live' | 'completed'>('all');
   
   const allEvents = useQuery(api.events.getAllEvents);
 
@@ -21,56 +26,41 @@ export default function CalendarScreen() {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
-
-    const days = [];
+  const getEventsForDate = (date: Date) => {
+    if (!allEvents) return [];
     
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null);
-    }
-    
-    // Add all days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      days.push(day);
-    }
-    
-    return days;
-  };
-
-  const getEventsForDate = (day: number) => {
-    if (!allEvents || !day) return [];
-    
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth() + 1;
-    const dateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    
+    const dateString = date.toISOString().split('T')[0];
     return allEvents.filter(event => event.eventDate === dateString);
   };
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    const newDate = new Date(currentDate);
-    if (direction === 'prev') {
-      newDate.setMonth(newDate.getMonth() - 1);
-    } else {
-      newDate.setMonth(newDate.getMonth() + 1);
-    }
-    setCurrentDate(newDate);
+  const getUpcomingEvents = () => {
+    if (!allEvents) return [];
+    
+    const now = new Date();
+    const twoWeeksFromNow = new Date();
+    twoWeeksFromNow.setDate(now.getDate() + 14);
+    
+    return allEvents
+      .filter(event => {
+        const eventDate = new Date(event.eventDate);
+        const matchesFilter = filterStatus === 'all' || event.status.toLowerCase() === filterStatus;
+        
+        if (viewMode === 'upcoming') {
+          return eventDate >= now && eventDate <= twoWeeksFromNow && matchesFilter;
+        }
+        return matchesFilter;
+      })
+      .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
   };
 
-  const handleDatePress = (day: number) => {
-    const eventsForDay = getEventsForDate(day);
-    if (eventsForDay.length > 0) {
-      setSelectedEvent(eventsForDay[0]); // Show first event for now
-      setModalVisible(true);
+  const handleDatePress = (value: Value) => {
+    setSelectedDate(value);
+    if (value instanceof Date) {
+      const eventsForDay = getEventsForDate(value);
+      if (eventsForDay.length > 0) {
+        setSelectedEvent(eventsForDay[0]);
+        setModalVisible(true);
+      }
     }
   };
 
@@ -80,14 +70,16 @@ export default function CalendarScreen() {
   };
 
   const getEventDensity = () => {
-    if (!allEvents) return { total: 0, upcoming: 0, thisMonth: 0 };
+    if (!allEvents) return { total: 0, upcoming: 0, thisMonth: 0, live: 0 };
     
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const now = new Date();
     
     return {
       total: allEvents.length,
-      upcoming: allEvents.filter(e => e.status === 'Upcoming').length,
+      upcoming: allEvents.filter(e => e.status === 'Upcoming' && new Date(e.eventDate) >= now).length,
+      live: allEvents.filter(e => e.status === 'Live').length,
       thisMonth: allEvents.filter(e => {
         const eventDate = new Date(e.eventDate);
         return eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear;
@@ -95,22 +87,76 @@ export default function CalendarScreen() {
     };
   };
 
-  const days = getDaysInMonth(currentDate);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Upcoming': return '#FFD700';
+      case 'Live': return '#4CAF50';
+      case 'Completed': return '#2196F3';
+      case 'Cancelled': return '#F44336';
+      default: return '#ccc';
+    }
+  };
+
+  const tileContent = ({ date, view }: { date: Date; view: string }) => {
+    if (view === 'month') {
+      const eventsForDay = getEventsForDate(date);
+      if (eventsForDay.length > 0) {
+        return (
+          <View style={styles.eventDots}>
+            {eventsForDay.slice(0, 3).map((event, index) => (
+              <View 
+                key={index} 
+                style={[
+                  styles.eventDot, 
+                  { backgroundColor: getStatusColor(event.status) }
+                ]} 
+              />
+            ))}
+            {eventsForDay.length > 3 && (
+              <Text style={styles.moreEvents}>+{eventsForDay.length - 3}</Text>
+            )}
+          </View>
+        );
+      }
+    }
+    return null;
+  };
+
+  const tileClassName = ({ date, view }: { date: Date; view: string }) => {
+    if (view === 'month') {
+      const eventsForDay = getEventsForDate(date);
+      if (eventsForDay.length > 0) {
+        return 'has-events';
+      }
+    }
+    return '';
+  };
+
   const eventDensity = getEventDensity();
+  const upcomingEvents = getUpcomingEvents();
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.headerIcon}>
-            <CalendarIcon size={32} color="#1a1a1a" />
+        <LinearGradient
+          colors={['#FFD700', '#FFA500']}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerContent}>
+            <View style={styles.headerIcon}>
+              <CalendarIcon size={32} color="#1a1a1a" />
+            </View>
+            <View style={styles.headerText}>
+              <Text style={styles.title}>Event Calendar</Text>
+              <Text style={styles.subtitle}>Discover upcoming fights & events</Text>
+            </View>
+            <View style={styles.headerStats}>
+              <Text style={styles.headerStatsNumber}>{eventDensity.upcoming}</Text>
+              <Text style={styles.headerStatsLabel}>Upcoming</Text>
+            </View>
           </View>
-          <View style={styles.headerText}>
-            <Text style={styles.title}>Event Calendar</Text>
-            <Text style={styles.subtitle}>Discover upcoming fights</Text>
-          </View>
-        </View>
+        </LinearGradient>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -130,6 +176,10 @@ export default function CalendarScreen() {
               <Text style={styles.densityLabel}>Upcoming</Text>
             </View>
             <View style={styles.densityCard}>
+              <Text style={[styles.densityNumber, { color: '#FF9800' }]}>{eventDensity.live}</Text>
+              <Text style={styles.densityLabel}>Live Now</Text>
+            </View>
+            <View style={styles.densityCard}>
               <Text style={[styles.densityNumber, { color: '#2196F3' }]}>{eventDensity.thisMonth}</Text>
               <Text style={styles.densityLabel}>This Month</Text>
             </View>
@@ -139,119 +189,183 @@ export default function CalendarScreen() {
         {/* View Mode Selector */}
         <View style={styles.viewModeSelector}>
           <TouchableOpacity
-            style={[styles.viewModeButton, viewMode === 'month' && styles.activeViewMode]}
-            onPress={() => setViewMode('month')}
+            style={[styles.viewModeButton, viewMode === 'calendar' && styles.activeViewMode]}
+            onPress={() => setViewMode('calendar')}
             activeOpacity={0.8}
           >
-            <Grid3x3 size={18} color={viewMode === 'month' ? '#1a1a1a' : '#FFD700'} />
-            <Text style={[styles.viewModeText, viewMode === 'month' && styles.activeViewModeText]}>
-              Month
+            <Grid3x3 size={18} color={viewMode === 'calendar' ? '#1a1a1a' : '#FFD700'} />
+            <Text style={[styles.viewModeText, viewMode === 'calendar' && styles.activeViewModeText]}>
+              Calendar
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={[styles.viewModeButton, viewMode === 'week' && styles.activeViewMode]}
-            onPress={() => setViewMode('week')}
+            style={[styles.viewModeButton, viewMode === 'upcoming' && styles.activeViewMode]}
+            onPress={() => setViewMode('upcoming')}
             activeOpacity={0.8}
           >
-            <BarChart3 size={18} color={viewMode === 'week' ? '#1a1a1a' : '#FFD700'} />
-            <Text style={[styles.viewModeText, viewMode === 'week' && styles.activeViewModeText]}>
-              Week
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.viewModeButton, viewMode === 'list' && styles.activeViewMode]}
-            onPress={() => setViewMode('list')}
-            activeOpacity={0.8}
-          >
-            <List size={18} color={viewMode === 'list' ? '#1a1a1a' : '#FFD700'} />
-            <Text style={[styles.viewModeText, viewMode === 'list' && styles.activeViewModeText]}>
-              List
+            <List size={18} color={viewMode === 'upcoming' ? '#1a1a1a' : '#FFD700'} />
+            <Text style={[styles.viewModeText, viewMode === 'upcoming' && styles.activeViewModeText]}>
+              Upcoming
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Calendar Navigation */}
-        <View style={styles.calendarHeader}>
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigateMonth('prev')}
-            activeOpacity={0.8}
-          >
-            <ChevronLeft size={24} color="#FFD700" />
-          </TouchableOpacity>
-          
-          <Text style={styles.monthYear}>
-            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-          </Text>
-          
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigateMonth('next')}
-            activeOpacity={0.8}
-          >
-            <ChevronRight size={24} color="#FFD700" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Calendar Grid */}
-        <View style={styles.calendar}>
-          {/* Day Headers */}
-          <View style={styles.dayHeaders}>
-            {dayNames.map((day) => (
-              <View key={day} style={styles.dayHeader}>
-                <Text style={styles.dayHeaderText}>{day}</Text>
+        {viewMode === 'calendar' ? (
+          /* Calendar View */
+          <View style={styles.calendarContainer}>
+            <View style={styles.calendarWrapper}>
+              <Calendar
+                onChange={handleDatePress}
+                value={selectedDate}
+                tileContent={tileContent}
+                tileClassName={tileClassName}
+                showNeighboringMonth={false}
+                locale="en-US"
+                calendarType="US"
+                prev2Label={null}
+                next2Label={null}
+                prevLabel={<ChevronLeft size={20} color="#FFD700" />}
+                nextLabel={<ChevronRight size={20} color="#FFD700" />}
+              />
+            </View>
+            
+            {/* Calendar Legend */}
+            <View style={styles.calendarLegend}>
+              <Text style={styles.legendTitle}>Event Status</Text>
+              <View style={styles.legendItems}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: '#FFD700' }]} />
+                  <Text style={styles.legendText}>Upcoming</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: '#4CAF50' }]} />
+                  <Text style={styles.legendText}>Live</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: '#2196F3' }]} />
+                  <Text style={styles.legendText}>Completed</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: '#F44336' }]} />
+                  <Text style={styles.legendText}>Cancelled</Text>
+                </View>
               </View>
-            ))}
+            </View>
           </View>
-
-          {/* Calendar Days */}
-          <View style={styles.daysGrid}>
-            {days.map((day, index) => {
-              const eventsForDay = day ? getEventsForDate(day) : [];
-              const hasEvents = eventsForDay.length > 0;
-              const isToday = day && 
-                day === new Date().getDate() && 
-                currentDate.getMonth() === new Date().getMonth() && 
-                currentDate.getFullYear() === new Date().getFullYear();
-              
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.dayCell,
-                    hasEvents && styles.dayWithEvents,
-                    isToday && styles.todayCell,
-                  ]}
-                  onPress={() => day && handleDatePress(day)}
-                  disabled={!day || !hasEvents}
-                  activeOpacity={hasEvents ? 0.8 : 1}
-                >
-                  {day && (
-                    <>
+        ) : (
+          /* Upcoming Events View */
+          <View style={styles.upcomingContainer}>
+            {/* Filter Buttons */}
+            <View style={styles.filterContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.filterButtons}>
+                  {(['all', 'upcoming', 'live', 'completed'] as const).map((status) => (
+                    <TouchableOpacity
+                      key={status}
+                      style={[
+                        styles.filterButton,
+                        filterStatus === status && styles.activeFilterButton
+                      ]}
+                      onPress={() => setFilterStatus(status)}
+                      activeOpacity={0.8}
+                    >
                       <Text style={[
-                        styles.dayText,
-                        hasEvents && styles.dayTextWithEvents,
-                        isToday && styles.todayText,
+                        styles.filterButtonText,
+                        filterStatus === status && styles.activeFilterButtonText
                       ]}>
-                        {day}
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
                       </Text>
-                      {hasEvents && (
-                        <View style={styles.eventIndicator}>
-                          <View style={styles.eventDot} />
-                          {eventsForDay.length > 1 && (
-                            <Text style={styles.eventCount}>+{eventsForDay.length - 1}</Text>
-                          )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+
+            {/* Events List */}
+            <View style={styles.eventsList}>
+              {upcomingEvents.length > 0 ? (
+                upcomingEvents.map((event) => (
+                  <TouchableOpacity 
+                    key={event._id} 
+                    style={styles.eventCard}
+                    onPress={() => handleEventPress(event)}
+                    activeOpacity={0.9}
+                  >
+                    <LinearGradient
+                      colors={['#2a2a2a', '#1a1a1a']}
+                      style={styles.eventCardGradient}
+                    >
+                      <View style={styles.eventCardHeader}>
+                        <Image
+                          source={{ uri: 'https://images.pexels.com/photos/4761663/pexels-photo-4761663.jpeg?auto=compress&cs=tinysrgb&w=100' }}
+                          style={styles.eventCardImage}
+                        />
+                        <View style={styles.eventCardInfo}>
+                          <Text style={styles.eventCardTitle}>{event.eventName}</Text>
+                          <View style={[
+                            styles.eventCardStatus,
+                            { backgroundColor: getStatusColor(event.status) }
+                          ]}>
+                            <Text style={styles.eventCardStatusText}>{event.status}</Text>
+                          </View>
                         </View>
+                        <View style={styles.eventCardArrow}>
+                          <Eye size={16} color="#FFD700" />
+                        </View>
+                      </View>
+
+                      <View style={styles.eventCardDetails}>
+                        <View style={styles.eventCardDetail}>
+                          <CalendarIcon size={14} color="#FFD700" />
+                          <Text style={styles.eventCardDetailText}>
+                            {new Date(event.eventDate).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </Text>
+                        </View>
+                        
+                        {event.eventTime && (
+                          <View style={styles.eventCardDetail}>
+                            <Clock size={14} color="#FFD700" />
+                            <Text style={styles.eventCardDetailText}>{event.eventTime}</Text>
+                          </View>
+                        )}
+                        
+                        <View style={styles.eventCardDetail}>
+                          <MapPin size={14} color="#FFD700" />
+                          <Text style={styles.eventCardDetailText}>
+                            {event.venue}, {event.city}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {event.description && (
+                        <Text style={styles.eventCardDescription} numberOfLines={2}>
+                          {event.description}
+                        </Text>
                       )}
-                    </>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <CalendarIcon size={64} color="#666" />
+                  <Text style={styles.emptyTitle}>No Events Found</Text>
+                  <Text style={styles.emptySubtitle}>
+                    {filterStatus === 'all' 
+                      ? 'No events scheduled for the next two weeks'
+                      : `No ${filterStatus} events found`
+                    }
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
@@ -274,35 +388,43 @@ export default function CalendarScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Upcoming Events Preview */}
-        <View style={styles.upcomingSection}>
-          <Text style={styles.sectionTitle}>Upcoming Events</Text>
-          {allEvents?.slice(0, 3).map((event) => (
-            <TouchableOpacity 
-              key={event._id} 
-              style={styles.eventPreview}
-              onPress={() => handleEventPress(event)}
-              activeOpacity={0.9}
-            >
-              <View style={styles.eventPreviewContent}>
-                <Text style={styles.eventPreviewTitle}>{event.eventName}</Text>
-                <View style={styles.eventPreviewDetails}>
-                  <View style={styles.eventPreviewDetail}>
-                    <CalendarIcon size={14} color="#FFD700" />
-                    <Text style={styles.eventPreviewText}>{event.eventDate}</Text>
-                  </View>
-                  <View style={styles.eventPreviewDetail}>
-                    <MapPin size={14} color="#FFD700" />
-                    <Text style={styles.eventPreviewText}>{event.venue}</Text>
-                  </View>
-                </View>
+        {/* Featured Events Preview */}
+        {allEvents && allEvents.length > 0 && (
+          <View style={styles.featuredSection}>
+            <View style={styles.featuredHeader}>
+              <Star size={24} color="#FFD700" />
+              <Text style={styles.sectionTitle}>Featured Events</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.featuredCards}>
+                {allEvents.slice(0, 3).map((event) => (
+                  <TouchableOpacity 
+                    key={event._id} 
+                    style={styles.featuredCard}
+                    onPress={() => handleEventPress(event)}
+                    activeOpacity={0.9}
+                  >
+                    <Image
+                      source={{ uri: 'https://images.pexels.com/photos/4761663/pexels-photo-4761663.jpeg?auto=compress&cs=tinysrgb&w=300' }}
+                      style={styles.featuredCardImage}
+                    />
+                    <View style={styles.featuredCardOverlay}>
+                      <View style={[
+                        styles.featuredCardStatus,
+                        { backgroundColor: getStatusColor(event.status) }
+                      ]}>
+                        <Text style={styles.featuredCardStatusText}>{event.status}</Text>
+                      </View>
+                      <Text style={styles.featuredCardTitle}>{event.eventName}</Text>
+                      <Text style={styles.featuredCardDate}>{event.eventDate}</Text>
+                      <Text style={styles.featuredCardVenue}>{event.venue}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
-              <View style={styles.eventPreviewArrow}>
-                <Eye size={16} color="#FFD700" />
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+            </ScrollView>
+          </View>
+        )}
       </ScrollView>
 
       {/* Event Detail Modal */}
@@ -314,51 +436,56 @@ export default function CalendarScreen() {
       >
         {selectedEvent && (
           <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Event Details</Text>
-              <TouchableOpacity 
-                style={styles.closeButton}
-                onPress={() => setModalVisible(false)}
-                activeOpacity={0.8}
-              >
-                <X size={24} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-              <View style={styles.eventDetails}>
-                <Text style={styles.eventTitle}>{selectedEvent.eventName}</Text>
-                
-                <View style={styles.eventDetailRow}>
-                  <CalendarIcon size={20} color="#FFD700" />
-                  <Text style={styles.eventDetailText}>
-                    {selectedEvent.eventDate} {selectedEvent.eventTime && `at ${selectedEvent.eventTime}`}
-                  </Text>
-                </View>
-
-                <View style={styles.eventDetailRow}>
-                  <MapPin size={20} color="#FFD700" />
-                  <Text style={styles.eventDetailText}>
-                    {selectedEvent.venue}, {selectedEvent.city}, {selectedEvent.country}
-                  </Text>
-                </View>
-
-                {selectedEvent.description && (
-                  <View style={styles.descriptionContainer}>
-                    <Text style={styles.descriptionTitle}>Description</Text>
-                    <Text style={styles.descriptionText}>{selectedEvent.description}</Text>
-                  </View>
-                )}
-
+            <LinearGradient
+              colors={['#1a1a1a', '#2a2a2a']}
+              style={styles.modalGradient}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Event Details</Text>
                 <TouchableOpacity 
-                  style={styles.viewFullButton}
-                  onPress={() => handleEventPress(selectedEvent)}
+                  style={styles.closeButton}
+                  onPress={() => setModalVisible(false)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.viewFullButtonText}>View Full Details</Text>
+                  <X size={24} color="#fff" />
                 </TouchableOpacity>
               </View>
-            </ScrollView>
+
+              <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.eventDetails}>
+                  <Text style={styles.eventTitle}>{selectedEvent.eventName}</Text>
+                  
+                  <View style={styles.eventDetailRow}>
+                    <CalendarIcon size={20} color="#FFD700" />
+                    <Text style={styles.eventDetailText}>
+                      {selectedEvent.eventDate} {selectedEvent.eventTime && `at ${selectedEvent.eventTime}`}
+                    </Text>
+                  </View>
+
+                  <View style={styles.eventDetailRow}>
+                    <MapPin size={20} color="#FFD700" />
+                    <Text style={styles.eventDetailText}>
+                      {selectedEvent.venue}, {selectedEvent.city}, {selectedEvent.country}
+                    </Text>
+                  </View>
+
+                  {selectedEvent.description && (
+                    <View style={styles.descriptionContainer}>
+                      <Text style={styles.descriptionTitle}>Description</Text>
+                      <Text style={styles.descriptionText}>{selectedEvent.description}</Text>
+                    </View>
+                  )}
+
+                  <TouchableOpacity 
+                    style={styles.viewFullButton}
+                    onPress={() => handleEventPress(selectedEvent)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.viewFullButtonText}>View Full Details</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </LinearGradient>
           </View>
         )}
       </Modal>
@@ -372,10 +499,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
   },
   header: {
-    backgroundColor: '#FFD700',
     paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 24,
+    paddingBottom: 0,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     shadowColor: '#000',
@@ -383,6 +508,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  headerGradient: {
+    paddingHorizontal: 24,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
   headerContent: {
     flexDirection: 'row',
@@ -409,6 +540,23 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#333',
+  },
+  headerStats: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(26, 26, 26, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  headerStatsNumber: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+  },
+  headerStatsLabel: {
+    fontSize: 10,
+    color: '#333',
+    fontWeight: '600',
   },
   content: {
     flex: 1,
@@ -446,13 +594,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   densityNumber: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#FFD700',
     marginBottom: 8,
   },
   densityLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#ccc',
     textAlign: 'center',
     fontWeight: '500',
@@ -494,28 +642,7 @@ const styles = StyleSheet.create({
   activeViewModeText: {
     color: '#1a1a1a',
   },
-  calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  navButton: {
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: '#2a2a2a',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  monthYear: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  calendar: {
+  calendarContainer: {
     backgroundColor: '#2a2a2a',
     borderRadius: 20,
     padding: 20,
@@ -526,73 +653,161 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  dayHeaders: {
-    flexDirection: 'row',
+  calendarWrapper: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 20,
   },
-  dayHeader: {
-    width: CELL_SIZE,
-    alignItems: 'center',
-  },
-  dayHeaderText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFD700',
-  },
-  daysGrid: {
+  eventDots: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  dayCell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
-    borderRadius: 12,
-    margin: 2,
-  },
-  dayWithEvents: {
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  todayCell: {
-    backgroundColor: 'rgba(255, 215, 0, 0.3)',
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  dayText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '500',
-  },
-  dayTextWithEvents: {
-    color: '#FFD700',
-    fontWeight: 'bold',
-  },
-  todayText: {
-    color: '#1a1a1a',
-    fontWeight: 'bold',
-  },
-  eventIndicator: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginTop: 2,
     gap: 2,
   },
   eventDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#FFD700',
   },
-  eventCount: {
+  moreEvents: {
     fontSize: 8,
-    color: '#FFD700',
+    color: '#666',
     fontWeight: 'bold',
+    marginLeft: 2,
+  },
+  calendarLegend: {
+    backgroundColor: '#333',
+    borderRadius: 12,
+    padding: 16,
+  },
+  legendTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 12,
+  },
+  legendItems: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#ccc',
+  },
+  upcomingContainer: {
+    marginBottom: 24,
+  },
+  filterContainer: {
+    marginBottom: 20,
+  },
+  filterButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#333',
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  activeFilterButton: {
+    backgroundColor: '#FFD700',
+    borderColor: '#FFD700',
+  },
+  filterButtonText: {
+    fontSize: 14,
+    color: '#ccc',
+    fontWeight: '500',
+  },
+  activeFilterButtonText: {
+    color: '#1a1a1a',
+    fontWeight: '600',
+  },
+  eventsList: {
+    gap: 16,
+  },
+  eventCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  eventCardGradient: {
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 16,
+  },
+  eventCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  eventCardImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 16,
+  },
+  eventCardInfo: {
+    flex: 1,
+  },
+  eventCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 6,
+  },
+  eventCardStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  eventCardStatusText: {
+    fontSize: 10,
+    color: '#1a1a1a',
+    fontWeight: 'bold',
+  },
+  eventCardArrow: {
+    padding: 8,
+  },
+  eventCardDetails: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  eventCardDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  eventCardDetailText: {
+    fontSize: 14,
+    color: '#ccc',
+  },
+  eventCardDescription: {
+    fontSize: 14,
+    color: '#ccc',
+    lineHeight: 20,
+    fontStyle: 'italic',
   },
   quickActions: {
     flexDirection: 'row',
@@ -620,55 +835,96 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  upcomingSection: {
-    marginBottom: 100, // Extra space for tab bar
+  featuredSection: {
+    marginBottom: 100,
+  },
+  featuredHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 16,
   },
-  eventPreview: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+  featuredCards: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 16,
+  },
+  featuredCard: {
+    width: 250,
+    height: 150,
+    borderRadius: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  eventPreviewContent: {
-    flex: 1,
+  featuredCardImage: {
+    width: '100%',
+    height: '100%',
   },
-  eventPreviewTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+  featuredCardOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    padding: 16,
+  },
+  featuredCardStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
     marginBottom: 8,
   },
-  eventPreviewDetails: {
-    gap: 4,
+  featuredCardStatusText: {
+    fontSize: 10,
+    color: '#1a1a1a',
+    fontWeight: 'bold',
   },
-  eventPreviewDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  eventPreviewText: {
+  featuredCardTitle: {
     fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  featuredCardDate: {
+    fontSize: 12,
+    color: '#FFD700',
+    marginBottom: 2,
+  },
+  featuredCardVenue: {
+    fontSize: 12,
     color: '#ccc',
   },
-  eventPreviewArrow: {
-    padding: 8,
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#ccc',
+    textAlign: 'center',
   },
   modalContainer: {
     flex: 1,
     backgroundColor: '#1a1a1a',
+  },
+  modalGradient: {
+    flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
