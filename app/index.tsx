@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Dimensions } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useQuery } from 'convex/react';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Shield, Trophy, Calendar, Users, Target, Zap, LogIn, UserPlus, ArrowRight } from 'lucide-react-native';
+import { Shield, Trophy, Calendar, Users, Target, Zap, LogIn, UserPlus, ArrowRight, MapPin, Clock, Building2, Star, TrendingUp } from 'lucide-react-native';
 import { api } from '@/convex/_generated/api';
-import AuthModal from '../components/AuthModel';
+import AuthModal from '../components/AuthModal';
+
+const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const { user, isLoaded } = useUser();
@@ -14,18 +16,28 @@ export default function HomeScreen() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [isNavigating, setIsNavigating] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [randomCards, setRandomCards] = useState<{
+    fighter: any;
+    event: any;
+    gym: any;
+  } | null>(null);
   
   const userData = useQuery(
     api.users.getUserByClerkId,
     user?.id ? { clerkId: user.id } : "skip"
   );
 
+  // Fetch data for statistics and random cards
+  const allFighters = useQuery(api.fighters.getAllFighters, { limit: 50 });
+  const allEvents = useQuery(api.events.getAllEvents);
+  const allGyms = useQuery(api.gyms.getAllGyms, { limit: 50 });
+
   // Handle initial load completion
   useEffect(() => {
     if (isLoaded) {
       const timer = setTimeout(() => {
         setInitialLoadComplete(true);
-      }, 500); // Small delay to ensure smooth loading
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [isLoaded]);
@@ -34,7 +46,6 @@ export default function HomeScreen() {
   useEffect(() => {
     if (initialLoadComplete && user && userData && !isNavigating) {
       setIsNavigating(true);
-      // Smooth transition delay
       setTimeout(() => {
         router.replace('/(tabs)');
       }, 300);
@@ -50,6 +61,32 @@ export default function HomeScreen() {
       }, 300);
     }
   }, [initialLoadComplete, user, userData, isNavigating]);
+
+  // Generate random cards when data is available
+  useEffect(() => {
+    if (allFighters && allEvents && allGyms) {
+      const fightersArray = Array.isArray(allFighters) ? allFighters : allFighters?.page || [];
+      const gymsArray = Array.isArray(allGyms) ? allGyms : [];
+      
+      const randomFighter = fightersArray.length > 0 
+        ? fightersArray[Math.floor(Math.random() * fightersArray.length)]
+        : null;
+      
+      const randomEvent = allEvents.length > 0 
+        ? allEvents[Math.floor(Math.random() * allEvents.length)]
+        : null;
+      
+      const randomGym = gymsArray.length > 0 
+        ? gymsArray[Math.floor(Math.random() * gymsArray.length)]
+        : null;
+
+      setRandomCards({
+        fighter: randomFighter,
+        event: randomEvent,
+        gym: randomGym
+      });
+    }
+  }, [allFighters, allEvents, allGyms]);
 
   // Enhanced loading screen
   if (!isLoaded || !initialLoadComplete || (user && isNavigating)) {
@@ -70,7 +107,7 @@ export default function HomeScreen() {
             </Text>
             {user && userData && (
               <Text style={styles.loadingSubtext}>
-                Welcome back, {userData.fightName || userData.firstName}!
+                Welcome back, {userData.roleData?.fightName || userData.roleData?.gymName || userData.firstName}!
               </Text>
             )}
           </View>
@@ -97,6 +134,12 @@ export default function HomeScreen() {
       setAuthModalVisible(true);
     }
   };
+
+  // Calculate statistics
+  const totalFighters = Array.isArray(allFighters) ? allFighters.length : allFighters?.page?.length || 0;
+  const totalEvents = allEvents?.length || 0;
+  const totalGyms = Array.isArray(allGyms) ? allGyms.length : 0;
+  const upcomingEvents = allEvents?.filter(e => e.status === 'Upcoming').length || 0;
 
   return (
     <ScrollView 
@@ -156,6 +199,194 @@ export default function HomeScreen() {
           <View style={styles.heroImageOverlay} />
         </View>
       </LinearGradient>
+
+      {/* Dynamic Statistics Section */}
+      <View style={styles.statsSection}>
+        <View style={styles.statsHeader}>
+          <TrendingUp size={32} color="#FFD700" />
+          <Text style={styles.statsTitle}>Live Community Stats</Text>
+        </View>
+        
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <LinearGradient
+              colors={['#FFD700', '#FFA500']}
+              style={styles.statGradient}
+            >
+              <Shield size={28} color="#1a1a1a" />
+              <Text style={styles.statNumber}>{totalFighters}</Text>
+              <Text style={styles.statLabel}>Active Fighters</Text>
+            </LinearGradient>
+          </View>
+          
+          <View style={styles.statCard}>
+            <LinearGradient
+              colors={['#4CAF50', '#45a049']}
+              style={styles.statGradient}
+            >
+              <Calendar size={28} color="#fff" />
+              <Text style={[styles.statNumber, { color: '#fff' }]}>{upcomingEvents}</Text>
+              <Text style={[styles.statLabel, { color: '#fff' }]}>Upcoming Events</Text>
+            </LinearGradient>
+          </View>
+          
+          <View style={styles.statCard}>
+            <LinearGradient
+              colors={['#2196F3', '#1976D2']}
+              style={styles.statGradient}
+            >
+              <Building2 size={28} color="#fff" />
+              <Text style={[styles.statNumber, { color: '#fff' }]}>{totalGyms}</Text>
+              <Text style={[styles.statLabel, { color: '#fff' }]}>Training Gyms</Text>
+            </LinearGradient>
+          </View>
+        </View>
+      </View>
+
+      {/* Random Featured Cards Section */}
+      {randomCards && (
+        <View style={styles.featuredSection}>
+          <Text style={styles.sectionTitle}>Featured Today</Text>
+          <Text style={styles.sectionSubtitle}>
+            Discover amazing fighters, events, and gyms from our community
+          </Text>
+          
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cardsContainer}>
+            {/* Random Fighter Card */}
+            {randomCards.fighter && (
+              <TouchableOpacity 
+                style={styles.featuredCard}
+                onPress={() => handleProtectedAction(() => router.push(`/user-profile?id=${randomCards.fighter.clerkId}`))}
+                activeOpacity={0.9}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardAvatar}>
+                    <Text style={styles.cardAvatarText}>
+                      {randomCards.fighter.firstName?.[0]}{randomCards.fighter.lastName?.[0]}
+                    </Text>
+                  </View>
+                  <View style={styles.cardBadge}>
+                    <Shield size={12} color="#1a1a1a" />
+                    <Text style={styles.cardBadgeText}>Fighter</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.cardTitle}>
+                  {randomCards.fighter.fightName || `${randomCards.fighter.firstName} ${randomCards.fighter.lastName}`}
+                </Text>
+                
+                {randomCards.fighter.gym && (
+                  <View style={styles.cardDetail}>
+                    <MapPin size={14} color="#ccc" />
+                    <Text style={styles.cardDetailText}>{randomCards.fighter.gym}</Text>
+                  </View>
+                )}
+                
+                {randomCards.fighter.disciplines && randomCards.fighter.disciplines.length > 0 && (
+                  <View style={styles.disciplinesContainer}>
+                    {randomCards.fighter.disciplines.slice(0, 2).map((discipline: string, index: number) => (
+                      <View key={index} style={styles.disciplineTag}>
+                        <Text style={styles.disciplineText}>{discipline}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                
+                <View style={styles.cardFooter}>
+                  <Star size={16} color="#FFD700" />
+                  <Text style={styles.cardFooterText}>Featured Fighter</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            {/* Random Event Card */}
+            {randomCards.event && (
+              <TouchableOpacity 
+                style={styles.featuredCard}
+                onPress={() => handleProtectedAction(() => router.push(`/event-details?id=${randomCards.event._id}`))}
+                activeOpacity={0.9}
+              >
+                <View style={styles.cardHeader}>
+                  <Image
+                    source={{ uri: 'https://images.pexels.com/photos/4761663/pexels-photo-4761663.jpeg?auto=compress&cs=tinysrgb&w=100' }}
+                    style={styles.cardImage}
+                  />
+                  <View style={[styles.cardBadge, { backgroundColor: '#4CAF50' }]}>
+                    <Calendar size={12} color="#fff" />
+                    <Text style={[styles.cardBadgeText, { color: '#fff' }]}>Event</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.cardTitle}>{randomCards.event.eventName}</Text>
+                
+                <View style={styles.cardDetail}>
+                  <Clock size={14} color="#ccc" />
+                  <Text style={styles.cardDetailText}>{randomCards.event.eventDate}</Text>
+                </View>
+                
+                <View style={styles.cardDetail}>
+                  <MapPin size={14} color="#ccc" />
+                  <Text style={styles.cardDetailText}>
+                    {randomCards.event.venue}, {randomCards.event.city}
+                  </Text>
+                </View>
+                
+                <View style={styles.cardFooter}>
+                  <Star size={16} color="#FFD700" />
+                  <Text style={styles.cardFooterText}>Featured Event</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            {/* Random Gym Card */}
+            {randomCards.gym && (
+              <TouchableOpacity 
+                style={styles.featuredCard}
+                onPress={() => handleProtectedAction(() => router.push(`/user-profile?id=${randomCards.gym.clerkId}`))}
+                activeOpacity={0.9}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardAvatar}>
+                    <Text style={styles.cardAvatarText}>
+                      {randomCards.gym.gymName?.[0] || 'G'}
+                    </Text>
+                  </View>
+                  <View style={[styles.cardBadge, { backgroundColor: '#2196F3' }]}>
+                    <Building2 size={12} color="#fff" />
+                    <Text style={[styles.cardBadgeText, { color: '#fff' }]}>Gym</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.cardTitle}>{randomCards.gym.gymName}</Text>
+                
+                {randomCards.gym.address?.city && (
+                  <View style={styles.cardDetail}>
+                    <MapPin size={14} color="#ccc" />
+                    <Text style={styles.cardDetailText}>
+                      {randomCards.gym.address.city}, {randomCards.gym.address.country}
+                    </Text>
+                  </View>
+                )}
+                
+                {randomCards.gym.disciplines && randomCards.gym.disciplines.length > 0 && (
+                  <View style={styles.disciplinesContainer}>
+                    {randomCards.gym.disciplines.slice(0, 2).map((discipline: string, index: number) => (
+                      <View key={index} style={styles.disciplineTag}>
+                        <Text style={styles.disciplineText}>{discipline}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                
+                <View style={styles.cardFooter}>
+                  <Star size={16} color="#FFD700" />
+                  <Text style={styles.cardFooterText}>Featured Gym</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Features Section */}
       <View style={styles.featuresSection}>
@@ -266,28 +497,6 @@ export default function HomeScreen() {
               <ArrowRight size={16} color="#FFD700" />
             </View>
           </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Stats Section */}
-      <View style={styles.statsSection}>
-        <Text style={styles.sectionTitle}>Join the Community</Text>
-        <Text style={styles.sectionSubtitle}>
-          Thousands of fighters and promoters trust Combat Domain
-        </Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>1000+</Text>
-            <Text style={styles.statLabel}>Active Fighters</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>500+</Text>
-            <Text style={styles.statLabel}>Events Organized</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>50+</Text>
-            <Text style={styles.statLabel}>Promoters</Text>
-          </View>
         </View>
       </View>
 
@@ -490,6 +699,157 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(26, 26, 26, 0.7)',
   },
+  statsSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 60,
+    backgroundColor: '#2a2a2a',
+  },
+  statsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 40,
+    gap: 12,
+  },
+  statsTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  statGradient: {
+    padding: 24,
+    borderRadius: 20,
+    alignItems: 'center',
+    gap: 8,
+  },
+  statNumber: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+  },
+  statLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    textAlign: 'center',
+  },
+  featuredSection: {
+    paddingVertical: 60,
+    paddingLeft: 24,
+  },
+  cardsContainer: {
+    marginTop: 32,
+  },
+  featuredCard: {
+    width: 280,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    padding: 20,
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cardAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFD700',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardAvatarText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+  },
+  cardImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  cardBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  cardBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 12,
+  },
+  cardDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  cardDetailText: {
+    fontSize: 14,
+    color: '#ccc',
+  },
+  disciplinesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 16,
+  },
+  disciplineTag: {
+    backgroundColor: '#333',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  disciplineText: {
+    fontSize: 10,
+    color: '#FFD700',
+    fontWeight: '500',
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  cardFooterText: {
+    fontSize: 12,
+    color: '#FFD700',
+    fontWeight: '600',
+  },
   featuresSection: {
     paddingHorizontal: 24,
     paddingVertical: 80,
@@ -553,33 +913,11 @@ const styles = StyleSheet.create({
     bottom: 20,
     right: 20,
   },
-  statsSection: {
-    backgroundColor: '#2a2a2a',
-    paddingHorizontal: 24,
-    paddingVertical: 80,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statCard: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    marginBottom: 8,
-  },
-  statLabel: {
-    fontSize: 16,
-    color: '#ccc',
-    textAlign: 'center',
-  },
   ctaSection: {
     paddingHorizontal: 24,
     paddingVertical: 80,
     alignItems: 'center',
+    backgroundColor: '#2a2a2a',
   },
   ctaTitle: {
     fontSize: 32,
