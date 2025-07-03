@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
-import { LogOut, Edit, Shield, HelpCircle, Bell, Moon, Settings as SettingsIcon } from 'lucide-react-native';
+import { LogOut, CreditCard as Edit, Shield, CircleHelp as HelpCircle, Bell, Moon, Settings as SettingsIcon } from 'lucide-react-native';
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
