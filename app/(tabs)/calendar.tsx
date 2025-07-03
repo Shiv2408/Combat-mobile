@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Dimensions, Image } from 'react-native';
 import { useQuery } from 'convex/react';
 import { router } from 'expo-router';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, Clock, Users, X, Grid3x3, List, BarChart3, Eye, Filter, Search, Star } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, Clock, Users, X, Grid3x3, List, ChartBar as BarChart3, Eye, Filter, Search, Star } from 'lucide-react-native';
 import { api } from '@/convex/_generated/api';
 import Calendar from 'react-calendar';
 import { LinearGradient } from 'expo-linear-gradient';
