@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, Image, ScrollView } from 'react-native';
 import { useSignUp, useOAuth } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
-import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, Shield, UserPlus, CheckCircle } from 'lucide-react-native';
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, Shield, UserPlus, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
 import LoadingSpinner from '@/components/LoadingSpinner';
