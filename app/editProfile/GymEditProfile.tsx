@@ -1,15 +1,31 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useQuery, useMutation } from 'convex/react';
 import { router } from 'expo-router';
-import { ArrowLeft, Save, User, Mail, Building, Phone, Globe, MapPin, Clock, Users, Dumbbell, Instagram, Facebook, Youtube, Twitter, Award, Star } from 'lucide-react-native';
+import { ArrowLeft, Save, User, Mail, Building, Phone, Globe, MapPin, Clock, Users, Dumbbell, Instagram, Facebook, Youtube, Twitter, Award, Star, Plus, X, Target, Activity, Trash2, Edit3 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { api } from '@/convex/_generated/api';
 import ImagePicker from '@/components/ImagePicker';
 
-const SERVICES = ['Boxing Training', 'MMA Training', 'Kickboxing', 'Muay Thai', 'BJJ Classes', 'Wrestling', 'Personal Training', 'Group Classes', 'Youth Programs', 'Competition Prep', 'Fitness Classes', 'Strength & Conditioning'];
-const AMENITIES = ['Locker Rooms', 'Showers', 'Parking', 'Pro Shop', 'Nutrition Bar', 'Recovery Room', 'Sauna', 'Equipment Rental', 'WiFi', 'Air Conditioning', 'Sound System', 'Video Analysis'];
+interface StaffMember {
+  name: string;
+  role: 'Head Coach' | 'Coach' | 'Trainer' | 'Assistant Coach' | 'Manager';
+  discipline?: string;
+  email?: string;
+  phoneNumber?: string;
+  bio?: string;
+}
+
+interface OperatingHours {
+  monday?: string;
+  tuesday?: string;
+  wednesday?: string;
+  thursday?: string;
+  friday?: string;
+  saturday?: string;
+  sunday?: string;
+}
 
 export default function GymEditProfile() {
   const { user } = useUser();
@@ -19,6 +35,7 @@ export default function GymEditProfile() {
   );
   const updateUser = useMutation(api.gyms.updateGymProfile);
 
+  // Basic Info
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -26,24 +43,71 @@ export default function GymEditProfile() {
   const [businessEmail, setBusinessEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [website, setWebsite] = useState('');
+  
+  // Address
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [country, setCountry] = useState('');
   const [zipCode, setZipCode] = useState('');
+  
+  // Images & Bio
   const [profileImage, setProfileImage] = useState('');
   const [bannerImage, setBannerImage] = useState('');
   const [bio, setBio] = useState('');
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
-  const [establishedYear, setEstablishedYear] = useState('');
-  const [membershipFee, setMembershipFee] = useState('');
-  const [openingHours, setOpeningHours] = useState('');
+
+  // Social Media
   const [instagram, setInstagram] = useState('');
   const [facebook, setFacebook] = useState('');
   const [youtube, setYoutube] = useState('');
   const [twitter, setTwitter] = useState('');
+
+  // New Fields
+  const [disciplines, setDisciplines] = useState<string[]>([]);
+  const [facilities, setFacilities] = useState<string[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [operatingHours, setOperatingHours] = useState<OperatingHours>({});
+
+  // Modal States
+  const [showStaffModal, setShowStaffModal] = useState(false);
+  const [showDisciplineModal, setShowDisciplineModal] = useState(false);
+  const [showFacilityModal, setShowFacilityModal] = useState(false);
+  const [editingStaffIndex, setEditingStaffIndex] = useState<number | null>(null);
+
+  // Form States for Modals
+  const [newDiscipline, setNewDiscipline] = useState('');
+  const [newFacility, setNewFacility] = useState('');
+  const [staffForm, setStaffForm] = useState<StaffMember>({
+    name: '',
+    role: 'Coach',
+    discipline: '',
+    email: '',
+    phoneNumber: '',
+    bio: ''
+  });
+
   const [loading, setLoading] = useState(false);
+
+  // Predefined options
+  const disciplineOptions = [
+    'Boxing', 'MMA', 'Muay Thai', 'Brazilian Jiu-Jitsu', 'Wrestling', 
+    'Kickboxing', 'Karate', 'Taekwondo', 'Judo', 'CrossFit', 
+    'Powerlifting', 'Olympic Weightlifting', 'Bodybuilding', 'Yoga', 'Pilates'
+  ];
+
+  const facilityOptions = [
+    'Boxing Ring', 'MMA Cage', 'Heavy Bags', 'Speed Bags', 'Double End Bags',
+    'Free Weights', 'Cardio Equipment', 'Squat Racks', 'Bench Press',
+    'Cable Machines', 'Mats', 'Locker Rooms', 'Showers', 'Sauna',
+    'Recovery Room', 'Pro Shop', 'Parking'
+  ];
+
+  const roleOptions: StaffMember['role'][] = [
+    'Head Coach', 'Coach', 'Trainer', 'Assistant Coach', 'Manager'
+  ];
+
+  const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   useEffect(() => {
     if (userData) {
@@ -66,23 +130,74 @@ export default function GymEditProfile() {
       setFacebook(userData.socials?.facebook || '');
       setYoutube(userData.socials?.youtube || '');
       setTwitter(userData.socials?.twitter || '');
+      setDisciplines(userData.disciplines || []);
+      setFacilities(userData.facilities || []);
+      setStaff(userData.staff || []);
+      setOperatingHours(userData.operatingHours || {});
     }
   }, [userData]);
 
-  const toggleService = (service: string) => {
-    setSelectedServices(prev => 
-      prev.includes(service) 
-        ? prev.filter(s => s !== service)
-        : [...prev, service]
-    );
+  const handleAddDiscipline = () => {
+    if (newDiscipline.trim() && !disciplines.includes(newDiscipline.trim())) {
+      setDisciplines([...disciplines, newDiscipline.trim()]);
+      setNewDiscipline('');
+      setShowDisciplineModal(false);
+    }
   };
 
-  const toggleAmenity = (amenity: string) => {
-    setSelectedAmenities(prev => 
-      prev.includes(amenity) 
-        ? prev.filter(a => a !== amenity)
-        : [...prev, amenity]
-    );
+  const handleRemoveDiscipline = (index: number) => {
+    setDisciplines(disciplines.filter((_, i) => i !== index));
+  };
+
+  const handleAddFacility = () => {
+    if (newFacility.trim() && !facilities.includes(newFacility.trim())) {
+      setFacilities([...facilities, newFacility.trim()]);
+      setNewFacility('');
+      setShowFacilityModal(false);
+    }
+  };
+
+  const handleRemoveFacility = (index: number) => {
+    setFacilities(facilities.filter((_, i) => i !== index));
+  };
+
+  const handleAddStaff = () => {
+    if (staffForm.name.trim()) {
+      if (editingStaffIndex !== null) {
+        const updatedStaff = [...staff];
+        updatedStaff[editingStaffIndex] = { ...staffForm };
+        setStaff(updatedStaff);
+        setEditingStaffIndex(null);
+      } else {
+        setStaff([...staff, { ...staffForm }]);
+      }
+      setStaffForm({
+        name: '',
+        role: 'Coach',
+        discipline: '',
+        email: '',
+        phoneNumber: '',
+        bio: ''
+      });
+      setShowStaffModal(false);
+    }
+  };
+
+  const handleEditStaff = (index: number) => {
+    setStaffForm({ ...staff[index] });
+    setEditingStaffIndex(index);
+    setShowStaffModal(true);
+  };
+
+  const handleRemoveStaff = (index: number) => {
+    setStaff(staff.filter((_, i) => i !== index));
+  };
+
+  const handleOperatingHoursChange = (day: string, hours: string) => {
+    setOperatingHours(prev => ({
+      ...prev,
+      [day]: hours
+    }));
   };
 
   const handleSave = async () => {
@@ -102,11 +217,6 @@ export default function GymEditProfile() {
       if (profileImage) updateData.profileImage = profileImage;
       if (bannerImage) updateData.bannerImage = bannerImage;
       if (bio.trim()) updateData.bio = bio.trim();
-      if (selectedServices.length > 0) updateData.services = selectedServices;
-      if (selectedAmenities.length > 0) updateData.amenities = selectedAmenities;
-      if (establishedYear.trim()) updateData.establishedYear = parseInt(establishedYear);
-      if (membershipFee.trim()) updateData.membershipFee = parseFloat(membershipFee);
-      if (openingHours.trim()) updateData.openingHours = openingHours.trim();
 
       const address: any = {};
       if (street.trim()) address.street = street.trim();
@@ -122,6 +232,11 @@ export default function GymEditProfile() {
       if (youtube.trim()) socials.youtube = youtube.trim();
       if (twitter.trim()) socials.twitter = twitter.trim();
       if (Object.keys(socials).length > 0) updateData.socials = socials;
+
+      if (disciplines.length > 0) updateData.disciplines = disciplines;
+      if (facilities.length > 0) updateData.facilities = facilities;
+      if (staff.length > 0) updateData.staff = staff;
+      if (Object.keys(operatingHours).length > 0) updateData.operatingHours = operatingHours;
 
       await updateUser(updateData);
 
@@ -143,7 +258,7 @@ export default function GymEditProfile() {
           colors={['#1a1a1a', '#2a2a2a']}
           style={styles.loadingGradient}
         >
-          <Dumbbell size={40} color="#E74C3C" />
+          <Dumbbell size={40} color="#FFD700" />
           <Text style={styles.loadingText}>Loading Gym Profile...</Text>
         </LinearGradient>
       </View>
@@ -153,7 +268,7 @@ export default function GymEditProfile() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#E74C3C', '#C0392B', '#A93226']}
+        colors={['#FFD700', '#FFA500', '#FF8C00']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
@@ -163,18 +278,18 @@ export default function GymEditProfile() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <ArrowLeft size={24} color="#fff" />
+            <ArrowLeft size={24} color="#1a1a1a" />
           </TouchableOpacity>
           <View style={styles.titleContainer}>
-            <Dumbbell size={24} color="#fff" />
-            <Text style={styles.title}>Gym Profile</Text>
+            <Dumbbell size={24} color="#1a1a1a" />
+            <Text style={styles.title}>Edit Gym Profile</Text>
           </View>
           <TouchableOpacity
             style={[styles.saveButton, loading && styles.buttonDisabled]}
             onPress={handleSave}
             disabled={loading}
           >
-            <Save size={20} color="#fff" />
+            <Save size={20} color="#1a1a1a" />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -190,7 +305,7 @@ export default function GymEditProfile() {
             style={styles.form}
           >
             <View style={styles.sectionHeader}>
-              <Star size={20} color="#E74C3C" />
+              <Star size={20} color="#FFD700" />
               <Text style={styles.sectionTitle}>Gym Branding</Text>
             </View>
 
@@ -217,12 +332,12 @@ export default function GymEditProfile() {
             style={styles.form}
           >
             <View style={styles.sectionHeader}>
-              <Building size={20} color="#E74C3C" />
+              <Building size={20} color="#FFD700" />
               <Text style={styles.sectionTitle}>Gym Information</Text>
             </View>
 
             <View style={styles.inputContainer}>
-              <User size={20} color="#E74C3C" style={styles.inputIcon} />
+              <User size={20} color="#FFD700" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Owner first name *"
@@ -234,7 +349,7 @@ export default function GymEditProfile() {
             </View>
 
             <View style={styles.inputContainer}>
-              <User size={20} color="#E74C3C" style={styles.inputIcon} />
+              <User size={20} color="#FFD700" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Owner last name *"
@@ -246,7 +361,7 @@ export default function GymEditProfile() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Building size={20} color="#E74C3C" style={styles.inputIcon} />
+              <Building size={20} color="#FFD700" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Gym name"
@@ -257,7 +372,7 @@ export default function GymEditProfile() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Mail size={20} color="#E74C3C" style={styles.inputIcon} />
+              <Mail size={20} color="#FFD700" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Personal email *"
@@ -271,7 +386,7 @@ export default function GymEditProfile() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Mail size={20} color="#E74C3C" style={styles.inputIcon} />
+              <Mail size={20} color="#FFD700" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Business email"
@@ -285,7 +400,7 @@ export default function GymEditProfile() {
 
             <View style={styles.row}>
               <View style={[styles.inputContainer, styles.halfWidth]}>
-                <Phone size={20} color="#E74C3C" style={styles.inputIcon} />
+                <Phone size={20} color="#FFD700" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Phone number"
@@ -297,7 +412,7 @@ export default function GymEditProfile() {
               </View>
 
               <View style={[styles.inputContainer, styles.halfWidth]}>
-                <Globe size={20} color="#E74C3C" style={styles.inputIcon} />
+                <Globe size={20} color="#FFD700" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Website"
@@ -316,12 +431,12 @@ export default function GymEditProfile() {
             style={styles.form}
           >
             <View style={styles.sectionHeader}>
-              <MapPin size={20} color="#E74C3C" />
+              <MapPin size={20} color="#FFD700" />
               <Text style={styles.sectionTitle}>Gym Location</Text>
             </View>
 
             <View style={styles.inputContainer}>
-              <MapPin size={20} color="#E74C3C" style={styles.inputIcon} />
+              <MapPin size={20} color="#FFD700" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Street address"
@@ -333,7 +448,7 @@ export default function GymEditProfile() {
 
             <View style={styles.row}>
               <View style={[styles.inputContainer, styles.halfWidth]}>
-                <MapPin size={20} color="#E74C3C" style={styles.inputIcon} />
+                <MapPin size={20} color="#FFD700" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="City"
@@ -344,7 +459,7 @@ export default function GymEditProfile() {
               </View>
 
               <View style={[styles.inputContainer, styles.halfWidth]}>
-                <MapPin size={20} color="#E74C3C" style={styles.inputIcon} />
+                <MapPin size={20} color="#FFD700" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="State/Province"
@@ -357,7 +472,7 @@ export default function GymEditProfile() {
 
             <View style={styles.row}>
               <View style={[styles.inputContainer, styles.halfWidth]}>
-                <MapPin size={20} color="#E74C3C" style={styles.inputIcon} />
+                <MapPin size={20} color="#FFD700" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Country"
@@ -368,7 +483,7 @@ export default function GymEditProfile() {
               </View>
 
               <View style={[styles.inputContainer, styles.halfWidth]}>
-                <MapPin size={20} color="#E74C3C" style={styles.inputIcon} />
+                <MapPin size={20} color="#FFD700" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="ZIP/Postal Code"
@@ -380,122 +495,128 @@ export default function GymEditProfile() {
             </View>
           </LinearGradient>
 
-          {/* Business Details */}
+          {/* Operating Hours */}
           <LinearGradient
             colors={['#2a2a2a', '#1f1f1f']}
             style={styles.form}
           >
             <View style={styles.sectionHeader}>
-              <Award size={20} color="#E74C3C" />
-              <Text style={styles.sectionTitle}>Business Details</Text>
+              <Clock size={20} color="#FFD700" />
+              <Text style={styles.sectionTitle}>Operating Hours</Text>
             </View>
 
-            <View style={styles.row}>
-              <View style={[styles.inputContainer, styles.halfWidth]}>
-                <Award size={20} color="#E74C3C" style={styles.inputIcon} />
+            {dayNames.map((day, index) => (
+              <View key={day} style={styles.inputContainer}>
+                <Clock size={20} color="#FFD700" style={styles.inputIcon} />
+                <Text style={styles.dayLabel}>{dayLabels[index]}</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Established year"
+                  style={[styles.input, { flex: 2 }]}
+                  placeholder="e.g., 6:00 AM - 10:00 PM or Closed"
                   placeholderTextColor="#666"
-                  value={establishedYear}
-                  onChangeText={setEstablishedYear}
-                  keyboardType="numeric"
+                  value={operatingHours[day as keyof OperatingHours] || ''}
+                  onChangeText={(text) => handleOperatingHoursChange(day, text)}
                 />
               </View>
-
-              <View style={[styles.inputContainer, styles.halfWidth]}>
-                <Users size={20} color="#E74C3C" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Monthly fee ($)"
-                  placeholderTextColor="#666"
-                  value={membershipFee}
-                  onChangeText={setMembershipFee}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Clock size={20} color="#E74C3C" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Opening hours (e.g., Mon-Fri 6AM-10PM)"
-                placeholderTextColor="#666"
-                value={openingHours}
-                onChangeText={setOpeningHours}
-              />
-            </View>
+            ))}
           </LinearGradient>
 
-          {/* Services */}
+          {/* Training Disciplines */}
           <LinearGradient
             colors={['#2a2a2a', '#1f1f1f']}
             style={styles.form}
           >
             <View style={styles.sectionHeader}>
-              <Dumbbell size={20} color="#E74C3C" />
-              <Text style={styles.sectionTitle}>Training Services</Text>
+              <Target size={20} color="#FFD700" />
+              <Text style={styles.sectionTitle}>Training Disciplines</Text>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => setShowDisciplineModal(true)}
+              >
+                <Plus size={20} color="#FFD700" />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.servicesGrid}>
-              {SERVICES.map((service) => (
-                <TouchableOpacity
-                  key={service}
-                  style={[
-                    styles.serviceChip,
-                    selectedServices.includes(service) && styles.serviceChipSelected
-                  ]}
-                  onPress={() => toggleService(service)}
-                >
-                  <Dumbbell 
-                    size={16} 
-                    color={selectedServices.includes(service) ? '#fff' : '#E74C3C'} 
-                  />
-                  <Text style={[
-                    styles.serviceChipText,
-                    selectedServices.includes(service) && styles.serviceChipTextSelected
-                  ]}>
-                    {service}
-                  </Text>
-                </TouchableOpacity>
+            <View style={styles.tagsContainer}>
+              {disciplines.map((discipline, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{discipline}</Text>
+                  <TouchableOpacity onPress={() => handleRemoveDiscipline(index)}>
+                    <X size={16} color="#1a1a1a" />
+                  </TouchableOpacity>
+                </View>
               ))}
             </View>
           </LinearGradient>
 
-          {/* Amenities */}
+          {/* Facilities & Equipment */}
           <LinearGradient
             colors={['#2a2a2a', '#1f1f1f']}
             style={styles.form}
           >
             <View style={styles.sectionHeader}>
-              <Star size={20} color="#E74C3C" />
-              <Text style={styles.sectionTitle}>Gym Amenities</Text>
+              <Activity size={20} color="#FFD700" />
+              <Text style={styles.sectionTitle}>Facilities & Equipment</Text>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => setShowFacilityModal(true)}
+              >
+                <Plus size={20} color="#FFD700" />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.amenitiesGrid}>
-              {AMENITIES.map((amenity) => (
-                <TouchableOpacity
-                  key={amenity}
-                  style={[
-                    styles.amenityChip,
-                    selectedAmenities.includes(amenity) && styles.amenityChipSelected
-                  ]}
-                  onPress={() => toggleAmenity(amenity)}
-                >
-                  <Star 
-                    size={16} 
-                    color={selectedAmenities.includes(amenity) ? '#fff' : '#E74C3C'} 
-                  />
-                  <Text style={[
-                    styles.amenityChipText,
-                    selectedAmenities.includes(amenity) && styles.amenityChipTextSelected
-                  ]}>
-                    {amenity}
-                  </Text>
-                </TouchableOpacity>
+            <View style={styles.tagsContainer}>
+              {facilities.map((facility, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{facility}</Text>
+                  <TouchableOpacity onPress={() => handleRemoveFacility(index)}>
+                    <X size={16} color="#1a1a1a" />
+                  </TouchableOpacity>
+                </View>
               ))}
             </View>
+          </LinearGradient>
+
+          {/* Staff Management */}
+          <LinearGradient
+            colors={['#2a2a2a', '#1f1f1f']}
+            style={styles.form}
+          >
+            <View style={styles.sectionHeader}>
+              <Users size={20} color="#FFD700" />
+              <Text style={styles.sectionTitle}>Staff Members</Text>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => setShowStaffModal(true)}
+              >
+                <Plus size={20} color="#FFD700" />
+              </TouchableOpacity>
+            </View>
+
+            {staff.map((member, index) => (
+              <View key={index} style={styles.staffCard}>
+                <View style={styles.staffInfo}>
+                  <Text style={styles.staffName}>{member.name}</Text>
+                  <Text style={styles.staffRole}>{member.role}</Text>
+                  {member.discipline && (
+                    <Text style={styles.staffDiscipline}>{member.discipline}</Text>
+                  )}
+                </View>
+                <View style={styles.staffActions}>
+                  <TouchableOpacity
+                    style={styles.editStaffButton}
+                    onPress={() => handleEditStaff(index)}
+                  >
+                    <Edit3 size={16} color="#FFD700" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteStaffButton}
+                    onPress={() => handleRemoveStaff(index)}
+                  >
+                    <Trash2 size={16} color="#FF5722" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
           </LinearGradient>
 
           {/* Bio */}
@@ -504,7 +625,7 @@ export default function GymEditProfile() {
             style={styles.form}
           >
             <View style={styles.sectionHeader}>
-              <User size={20} color="#E74C3C" />
+              <User size={20} color="#FFD700" />
               <Text style={styles.sectionTitle}>About Your Gym</Text>
             </View>
 
@@ -528,7 +649,7 @@ export default function GymEditProfile() {
             style={styles.form}
           >
             <View style={styles.sectionHeader}>
-              <Instagram size={20} color="#E74C3C" />
+              <Instagram size={20} color="#FFD700" />
               <Text style={styles.sectionTitle}>Social Media</Text>
             </View>
 
@@ -592,10 +713,10 @@ export default function GymEditProfile() {
               disabled={loading}
             >
               <LinearGradient
-                colors={['#E74C3C', '#C0392B']}
+                colors={['#FFD700', '#FFA500']}
                 style={styles.updateButtonGradient}
               >
-                <Save size={20} color="#fff" />
+                <Save size={20} color="#1a1a1a" />
                 <Text style={styles.updateButtonText}>
                   {loading ? 'Updating...' : 'Update Gym Profile'}
                 </Text>
@@ -604,6 +725,258 @@ export default function GymEditProfile() {
           </LinearGradient>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Discipline Modal */}
+      <Modal
+        visible={showDisciplineModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDisciplineModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Training Discipline</Text>
+              <TouchableOpacity onPress={() => setShowDisciplineModal(false)}>
+                <X size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.optionsContainer}>
+              {disciplineOptions.map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.optionItem,
+                    disciplines.includes(option) && styles.optionItemSelected
+                  ]}
+                  onPress={() => {
+                    if (!disciplines.includes(option)) {
+                      setDisciplines([...disciplines, option]);
+                    }
+                    setShowDisciplineModal(false);
+                  }}
+                  disabled={disciplines.includes(option)}
+                >
+                  <Text style={[
+                    styles.optionText,
+                    disciplines.includes(option) && styles.optionTextSelected
+                  ]}>
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={styles.customInputContainer}>
+              <TextInput
+                style={styles.customInput}
+                placeholder="Or add custom discipline..."
+                placeholderTextColor="#666"
+                value={newDiscipline}
+                onChangeText={setNewDiscipline}
+              />
+              <TouchableOpacity
+                style={styles.addCustomButton}
+                onPress={handleAddDiscipline}
+              >
+                <Plus size={20} color="#1a1a1a" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Facility Modal */}
+      <Modal
+        visible={showFacilityModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFacilityModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Facility/Equipment</Text>
+              <TouchableOpacity onPress={() => setShowFacilityModal(false)}>
+                <X size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.optionsContainer}>
+              {facilityOptions.map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.optionItem,
+                    facilities.includes(option) && styles.optionItemSelected
+                  ]}
+                  onPress={() => {
+                    if (!facilities.includes(option)) {
+                      setFacilities([...facilities, option]);
+                    }
+                    setShowFacilityModal(false);
+                  }}
+                  disabled={facilities.includes(option)}
+                >
+                  <Text style={[
+                    styles.optionText,
+                    facilities.includes(option) && styles.optionTextSelected
+                  ]}>
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={styles.customInputContainer}>
+              <TextInput
+                style={styles.customInput}
+                placeholder="Or add custom facility..."
+                placeholderTextColor="#666"
+                value={newFacility}
+                onChangeText={setNewFacility}
+              />
+              <TouchableOpacity
+                style={styles.addCustomButton}
+                onPress={handleAddFacility}
+              >
+                <Plus size={20} color="#1a1a1a" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Staff Modal */}
+      <Modal
+        visible={showStaffModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowStaffModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingStaffIndex !== null ? 'Edit Staff Member' : 'Add Staff Member'}
+              </Text>
+              <TouchableOpacity onPress={() => {
+                setShowStaffModal(false);
+                setEditingStaffIndex(null);
+                setStaffForm({
+                  name: '',
+                  role: 'Coach',
+                  discipline: '',
+                  email: '',
+                  phoneNumber: '',
+                  bio: ''
+                });
+              }}>
+                <X size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.staffFormContainer}>
+              <View style={styles.inputContainer}>
+                <User size={20} color="#FFD700" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Full name *"
+                  placeholderTextColor="#666"
+                  value={staffForm.name}
+                  onChangeText={(text) => setStaffForm({...staffForm, name: text})}
+                />
+              </View>
+
+              <Text style={styles.inputLabel}>Role</Text>
+              <View style={styles.roleContainer}>
+                {roleOptions.map((role) => (
+                  <TouchableOpacity
+                    key={role}
+                    style={[
+                      styles.roleOption,
+                      staffForm.role === role && styles.roleOptionSelected
+                    ]}
+                    onPress={() => setStaffForm({...staffForm, role})}
+                  >
+                    <Text style={[
+                      styles.roleOptionText,
+                      staffForm.role === role && styles.roleOptionTextSelected
+                    ]}>
+                      {role}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Target size={20} color="#FFD700" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Specialty/Discipline"
+                  placeholderTextColor="#666"
+                  value={staffForm.discipline}
+                  onChangeText={(text) => setStaffForm({...staffForm, discipline: text})}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Mail size={20} color="#FFD700" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor="#666"
+                  value={staffForm.email}
+                  onChangeText={(text) => setStaffForm({...staffForm, email: text})}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Phone size={20} color="#FFD700" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Phone number"
+                  placeholderTextColor="#666"
+                  value={staffForm.phoneNumber}
+                  onChangeText={(text) => setStaffForm({...staffForm, phoneNumber: text})}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.bioContainer}>
+                <TextInput
+                  style={styles.bioInput}
+                  placeholder="Bio/Experience..."
+                  placeholderTextColor="#666"
+                  value={staffForm.bio}
+                  onChangeText={(text) => setStaffForm({...staffForm, bio: text})}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.modalSaveButton}
+                onPress={handleAddStaff}
+              >
+                <LinearGradient
+                  colors={['#FFD700', '#FFA500']}
+                  style={styles.modalSaveButtonGradient}
+                >
+                  <Save size={20} color="#1a1a1a" />
+                  <Text style={styles.modalSaveButtonText}>
+                    {editingStaffIndex !== null ? 'Update Staff Member' : 'Add Staff Member'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -644,7 +1017,7 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(26, 26, 26, 0.1)',
   },
   titleContainer: {
     flexDirection: 'row',
@@ -654,12 +1027,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   saveButton: {
     padding: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(26, 26, 26, 0.1)',
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -694,6 +1067,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
+    flex: 1,
+  },
+  addButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: '#333',
   },
   inputLabel: {
     fontSize: 16,
@@ -721,6 +1100,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
   },
+  dayLabel: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: '600',
+    minWidth: 80,
+    marginRight: 12,
+  },
   row: {
     flexDirection: 'row',
     gap: 12,
@@ -728,59 +1114,65 @@ const styles = StyleSheet.create({
   halfWidth: {
     flex: 1,
   },
-  servicesGrid: {
+  tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    marginTop: 8,
   },
-  serviceChip: {
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  tagText: {
+    color: '#1a1a1a',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  staffCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#333',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E74C3C',
-    gap: 6,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
   },
-  serviceChipSelected: {
-    backgroundColor: '#E74C3C',
+  staffInfo: {
+    flex: 1,
   },
-  serviceChipText: {
-    color: '#E74C3C',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  serviceChipTextSelected: {
+  staffName: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#fff',
+    marginBottom: 4,
   },
-  amenitiesGrid: {
+  staffRole: {
+    fontSize: 14,
+    color: '#FFD700',
+    marginBottom: 2,
+  },
+  staffDiscipline: {
+    fontSize: 12,
+    color: '#ccc',
+  },
+  staffActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
   },
-  amenityChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#333',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E74C3C',
-    gap: 6,
+  editStaffButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#2a2a2a',
   },
-  amenityChipSelected: {
-    backgroundColor: '#E74C3C',
-  },
-  amenityChipText: {
-    color: '#E74C3C',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  amenityChipTextSelected: {
-    color: '#fff',
+  deleteStaffButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#2a2a2a',
   },
   bioContainer: {
     borderWidth: 1,
@@ -806,7 +1198,119 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   updateButtonText: {
+    color: '#1a1a1a',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContent: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#fff',
+  },
+  optionsContainer: {
+    maxHeight: 300,
+    marginBottom: 20,
+  },
+  optionItem: {
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#333',
+    marginBottom: 8,
+  },
+  optionItemSelected: {
+    backgroundColor: '#444',
+    opacity: 0.6,
+  },
+  optionText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  optionTextSelected: {
+    color: '#ccc',
+  },
+  customInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  customInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#444',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#333',
+    color: '#fff',
+    fontSize: 16,
+  },
+  addCustomButton: {
+    backgroundColor: '#FFD700',
+    borderRadius: 12,
+    padding: 12,
+  },
+  staffFormContainer: {
+    maxHeight: 400,
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  roleOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: '#333',
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  roleOptionSelected: {
+    backgroundColor: '#FFD700',
+  },
+  roleOptionText: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  roleOptionTextSelected: {
+    color: '#1a1a1a',
+  },
+  modalSaveButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 20,
+  },
+  modalSaveButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  modalSaveButtonText: {
+    color: '#1a1a1a',
     fontSize: 16,
     fontWeight: '600',
   },

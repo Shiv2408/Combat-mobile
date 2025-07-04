@@ -16,8 +16,8 @@ export default function AllEventsScreen() {
     const matchesSearch = searchQuery === '' || 
       event.eventName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.venue.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.country.toLowerCase().includes(searchQuery.toLowerCase());
+      event.address?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.address?.country?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = selectedStatus === 'All' || event.status === selectedStatus;
     
@@ -178,7 +178,7 @@ export default function AllEventsScreen() {
                   <View style={styles.eventDetailRow}>
                     <MapPin size={16} color="#FFD700" />
                     <Text style={styles.eventDetailText}>
-                      {event.venue}, {event.city}, {event.country}
+                      {event.venue}, {event.address?.city}, {event.address?.country}
                     </Text>
                   </View>
 
@@ -189,7 +189,7 @@ export default function AllEventsScreen() {
                   )}
 
                   <View style={styles.eventFooter}>
-                    <View style={styles.contactInfo}>
+                    {/* <View style={styles.contactInfo}>
                       {event.email && (
                         <View style={styles.contactItem}>
                           <Mail size={12} color="#ccc" />
@@ -202,7 +202,7 @@ export default function AllEventsScreen() {
                           <Text style={styles.contactText}>{event.phoneNumber}</Text>
                         </View>
                       )}
-                    </View>
+                    </View> */}
                     
                     <TouchableOpacity 
                       style={styles.viewDetailsButton}

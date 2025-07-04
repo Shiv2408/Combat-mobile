@@ -1,12 +1,30 @@
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
-import { useAuth } from '@clerk/clerk-expo';
+import { useAuth, useUser } from '@clerk/clerk-expo';
+import { useQuery } from 'convex/react';
 import { router } from 'expo-router';
 import { LogOut, CreditCard as Edit, Shield, CircleHelp as HelpCircle, Bell, Moon, Settings as SettingsIcon } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { api } from '@/convex/_generated/api';
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
+  const { user } = useUser();
+  const userData = useQuery(api.users.getUserByClerkId, user?.id ? { clerkId: user.id } : "skip");
 
+
+  const handleEditProfile = () => {
+    if (!userData) return;
+    const role = userData.role;
+    if (role === 'Fighter') {
+      router.push('/editProfile/FighterEditProfile');
+    } else if (role === 'Promoter') {
+      router.push('/editProfile/PromoterEditProfile');
+    } else if (role === 'Gym') {
+      router.push('/editProfile/GymEditProfile');
+    } else {
+      Alert.alert("Unknown Role", "We couldn't determine your profile type.");
+    }
+  };
   const handleSignOut = () => {
     Alert.alert(
       'Sign Out',
@@ -35,7 +53,7 @@ export default function SettingsScreen() {
       title: 'Edit Profile',
       subtitle: 'Update your personal information',
       icon: Edit,
-      onPress: () => router.push('/edit-profile'),
+      onPress: handleEditProfile,
     },
     {
       title: 'Notifications',

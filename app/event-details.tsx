@@ -55,7 +55,7 @@ export default function EventDetailsScreen() {
   };
 
   const handleDirections = () => {
-    const address = `${event.street}, ${event.city}, ${event.country}`;
+    const address = `${event.address?.street}, ${event.address?.city}, ${event.address?.country}`;
     const url = `https://maps.google.com/?q=${encodeURIComponent(address)}`;
     Linking.openURL(url);
   };
@@ -127,8 +127,8 @@ export default function EventDetailsScreen() {
               <View style={styles.venueInfo}>
                 <Text style={styles.venueName}>{event.venue}</Text>
                 <Text style={styles.venueAddress}>
-                  {event.street && `${event.street}, `}
-                  {event.city}, {event.country}
+                  {event.address?.street && `${event.address?.street}, `}
+                  {event.address?.city}, {event.address?.country}
                 </Text>
               </View>
             </View>
@@ -142,27 +142,7 @@ export default function EventDetailsScreen() {
           </View>
 
           {/* Contact */}
-          <View style={styles.infoSection}>
-            <Text style={styles.sectionTitle}>Contact Information</Text>
-            {event.email && (
-              <TouchableOpacity 
-                style={styles.contactRow}
-                onPress={() => handleContact('email', event.email)}
-              >
-                <Mail size={20} color="#FFD700" />
-                <Text style={styles.contactText}>{event.email}</Text>
-              </TouchableOpacity>
-            )}
-            {event.phoneNumber && (
-              <TouchableOpacity 
-                style={styles.contactRow}
-                onPress={() => handleContact('phone', event.phoneNumber)}
-              >
-                <Phone size={20} color="#FFD700" />
-                <Text style={styles.contactText}>{event.phoneNumber}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          
 
           {/* Additional Info */}
           {(event.medics || event.sanctions) && (

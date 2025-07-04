@@ -64,9 +64,11 @@ export default function UserProfileScreen() {
             </Text>
           </View>
           <Text style={styles.name}>
-            {user.fightName || `${user.firstName} ${user.lastName}`}
+            {user.role === 'Fighter' && 'fightName' in user && user.fightName
+              ? user.fightName
+              : `${user.firstName} ${user.lastName}`}
           </Text>
-          {user.fightName && (
+          {user.role === 'Fighter' && 'fightName' in user && user.fightName && (
             <Text style={styles.realName}>
               {user.firstName} {user.lastName}
             </Text>
@@ -103,7 +105,7 @@ export default function UserProfileScreen() {
             </View>
           </View>
 
-          {user.age && (
+          {isFighter && 'age' in user && user.age && (
             <View style={styles.infoItem}>
               <Users size={20} color="#FFD700" />
               <View style={styles.infoContent}>
@@ -113,7 +115,7 @@ export default function UserProfileScreen() {
             </View>
           )}
 
-          {user.gym && (
+          {'gym' in user && user.gym && (
             <View style={styles.infoItem}>
               <MapPin size={20} color="#FFD700" />
               <View style={styles.infoContent}>
@@ -123,7 +125,7 @@ export default function UserProfileScreen() {
             </View>
           )}
 
-          {user.headCoach && (
+          {'headCoach' in user && user.headCoach && (
             <View style={styles.infoItem}>
               <Users size={20} color="#FFD700" />
               <View style={styles.infoContent}>
@@ -138,7 +140,7 @@ export default function UserProfileScreen() {
         {isFighter && (
           <>
             {/* Physical Stats */}
-            {(user.height || user.weight) && (
+            {'height' in user && 'weight' in user && (user.height || user.weight) && (
               <View style={styles.infoCard}>
                 <Text style={styles.cardTitle}>Physical Stats</Text>
                 <View style={styles.statsRow}>
@@ -159,7 +161,7 @@ export default function UserProfileScreen() {
             )}
 
             {/* Disciplines */}
-            {user.disciplines && user.disciplines.length > 0 && (
+            {'disciplines' in user && Array.isArray(user.disciplines) && user.disciplines.length > 0 && (
               <View style={styles.infoCard}>
                 <Text style={styles.cardTitle}>Fighting Disciplines</Text>
                 <View style={styles.disciplinesContainer}>

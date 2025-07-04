@@ -105,7 +105,13 @@ export default function HomeScreen() {
             </Text>
             {user && userData && (
               <Text style={styles.loadingSubtext}>
-                Welcome back, {userData.roleData?.fightName || userData.roleData?.gymName || userData.firstName}!
+                Welcome back, {
+                  userData.roleData && 'fightName' in userData.roleData
+                    ? userData.roleData.fightName
+                    : userData.roleData && 'gymName' in userData.roleData
+                      ? userData.roleData.gymName
+                      : userData.firstName
+                }!
               </Text>
             )}
           </View>

@@ -4,6 +4,7 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import FighterProfile from '../profile/fighter-profile';
 import PromoterProfile from '../profile/promoter-profile';
+import GymProfile from '../profile/gym-profile';
 import React from 'react';
 
 export default function ProfileScreen() {
@@ -24,6 +25,8 @@ export default function ProfileScreen() {
   // Render appropriate profile based on user role
   if (userData.role === 'Fighter') {
     return <FighterProfile userData={userData} />;
+  } else if (userData.role === 'Gym') {
+    return <GymProfile userData={userData} user={user} />;
   } else {
     return <PromoterProfile userData={userData} />;
   }

@@ -21,8 +21,8 @@ export default function AllUsersScreen() {
   const filteredUsers = allUsers.filter(user => {
     const matchesSearch = searchQuery === '' || 
       `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (user.fightName && user.fightName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (user.gym && user.gym.toLowerCase().includes(searchQuery.toLowerCase()));
+      ('fightName' in user && user.fightName && user.fightName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (user.role === 'Fighter' && user.gym && user.gym.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesRole = selectedRole === 'All' || user.role === selectedRole;
     
@@ -135,7 +135,9 @@ export default function AllUsersScreen() {
                 <View style={styles.userInfo}>
                   <View style={styles.userHeader}>
                     <Text style={styles.userName}>
-                      {user.fightName || `${user.firstName} ${user.lastName}`}
+                      {user.role === 'Fighter' && user.fightName
+                        ? user.fightName
+                        : `${user.firstName} ${user.lastName}`}
                     </Text>
                     <View style={[
                       styles.roleBadge,
@@ -157,7 +159,7 @@ export default function AllUsersScreen() {
                   )}
 
                   <View style={styles.userDetails}>
-                    {user.gym && (
+                    {user.role === 'Fighter' && 'gym' in user && user.gym && (
                       <View style={styles.userDetail}>
                         <MapPin size={14} color="#ccc" />
                         <Text style={styles.userDetailText}>{user.gym}</Text>

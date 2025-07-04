@@ -127,8 +127,8 @@ export default function PromoterEventsScreen() {
                   <MapPin size={16} color="#ccc" />
                   <Text style={styles.detailText}>
                     {event.venue}
-                    {event.city && `, ${event.city}`}
-                    {event.country && `, ${event.country}`}
+                    {event.address?.city && `, ${event.address.city}`}
+                    {event.address?.country && `, ${event.address.country}`}
                   </Text>
                 </View>
 
@@ -138,20 +138,7 @@ export default function PromoterEventsScreen() {
                   </View>
                 )}
 
-                <View style={styles.contactRow}>
-                  {event.email && (
-                    <View style={styles.contactItem}>
-                      <Mail size={14} color="#FFD700" />
-                      <Text style={styles.contactText}>{event.email}</Text>
-                    </View>
-                  )}
-                  {event.phoneNumber && (
-                    <View style={styles.contactItem}>
-                      <Phone size={14} color="#FFD700" />
-                      <Text style={styles.contactText}>{event.phoneNumber}</Text>
-                    </View>
-                  )}
-                </View>
+               
 
                 {(event.medics || event.sanctions) && (
                   <View style={styles.additionalInfo}>
