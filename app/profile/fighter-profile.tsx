@@ -1,33 +1,74 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { useUser } from '@clerk/clerk-expo';
 import { useQuery } from 'convex/react';
 import { router } from 'expo-router';
-import { Shield, CreditCard as Edit, Mail, Calendar, MapPin, User, Dumbbell, Users, Award, Crown } from 'lucide-react-native';
+import { 
+  Shield, 
+  Edit, 
+  Mail, 
+  Calendar, 
+  MapPin, 
+  User, 
+  Dumbbell, 
+  Users, 
+  Award, 
+  Crown,
+  Target,
+  Ruler,
+  Weight,
+  Activity,
+  TrendingUp,
+  Clock,
+  Star,
+  Globe,
+  Instagram,
+  Facebook,
+  Youtube,
+  Twitter
+} from 'lucide-react-native';
 import { api } from '@/convex/_generated/api';
 
-interface FighterProfileProps {
-  userData: any;
-}
+export default function FighterProfile() {
+  const { user } = useUser();
+  
+  const userData = useQuery(
+    api.fighters.getFighterProfile,
+    user?.id ? { clerkId: user.id } : "skip"
+  );
 
-export default function FighterProfile({ userData }: FighterProfileProps) {
   const fighterStats = useQuery(
-    api.fights.getFighterStats,
-    { fighterId: userData._id }
+    api.fighters.getFighterStatistics,
+    user?.id ? { clerkId: user.id } : "skip"
   );
 
-  const achievements = useQuery(
-    api.achievements.getFighterAchievements,
-    { fighterId: userData._id }
-  );
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Please sign in to view your profile</Text>
+      </View>
+    );
+  }
 
-  const currentAchievements = achievements?.filter(a => a.isCurrentlyHeld) || [];
+  if (!userData) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FFD700" />
+        <Text style={styles.loadingText}>Loading Fighter Profile...</Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 100 }}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Header with Banner */}
       <View style={styles.header}>
-        {userData.roleData.bannerImage ? (
-          <Image source={{ uri: userData.roleData.bannerImage }} style={styles.bannerImage} />
+        {userData.bannerImage ? (
+          <Image source={{ uri: userData.bannerImage }} style={styles.bannerImage} />
         ) : (
           <View style={styles.defaultBanner} />
         )}
@@ -35,8 +76,8 @@ export default function FighterProfile({ userData }: FighterProfileProps) {
         
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
-            {userData.roleData.profileImage ? (
-              <Image source={{ uri: userData.roleData.profileImage }} style={styles.avatarImage} />
+            {userData.profileImage ? (
+              <Image source={{ uri: userData.profileImage }} style={styles.avatarImage} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarText}>
@@ -48,114 +89,48 @@ export default function FighterProfile({ userData }: FighterProfileProps) {
           <Text style={styles.name}>
             {userData.fightName || `${userData.firstName} ${userData.lastName}`}
           </Text>
+          {userData.nickname && (
+            <Text style={styles.nickname}>"{userData.nickname}"</Text>
+          )}
           <View style={styles.roleContainer}>
             <Shield size={20} color="#1a1a1a" />
-            <Text style={styles.role}>{userData.role}</Text>
+            <Text style={styles.role}>Fighter</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.content}>
-        {/* Fighter Stats Card */}
+        {/* Quick Stats Overview */}
         {fighterStats && (
-          <View style={styles.infoCard}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Fight Record</Text>
-              <TouchableOpacity
-                style={styles.viewRecordsButton}
-                onPress={() => router.push('/fight-records')}
-              >
-                <Award size={18} color="#FFD700" />
-                <Text style={styles.viewRecordsText}>View All</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.statsGrid}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{fighterStats.totalFights}</Text>
-                <Text style={styles.statLabel}>Total Fights</Text>
+          <View style={styles.quickStatsCard}>
+            <View style={styles.quickStatsGrid}>
+              <View style={styles.quickStatItem}>
+                <Text style={styles.quickStatValue}>{fighterStats.totalFights}</Text>
+                <Text style={styles.quickStatLabel}>Fights</Text>
               </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: '#4CAF50' }]}>{fighterStats.wins}</Text>
-                <Text style={styles.statLabel}>Wins</Text>
+              <View style={styles.quickStatItem}>
+                <Text style={[styles.quickStatValue, { color: '#4CAF50' }]}>{fighterStats.wins}</Text>
+                <Text style={styles.quickStatLabel}>Wins</Text>
               </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: '#F44336' }]}>{fighterStats.losses}</Text>
-                <Text style={styles.statLabel}>Losses</Text>
+              <View style={styles.quickStatItem}>
+                <Text style={[styles.quickStatValue, { color: '#F44336' }]}>{fighterStats.losses}</Text>
+                <Text style={styles.quickStatLabel}>Losses</Text>
               </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: '#FF9800' }]}>{fighterStats.draws}</Text>
-                <Text style={styles.statLabel}>Draws</Text>
-              </View>
-            </View>
-
-            <View style={styles.winMethodsContainer}>
-              <Text style={styles.winMethodsTitle}>Win Methods</Text>
-              <View style={styles.winMethodsGrid}>
-                <View style={styles.winMethodItem}>
-                  <Text style={styles.winMethodValue}>{fighterStats.koTkoWins}</Text>
-                  <Text style={styles.winMethodLabel}>KO/TKO</Text>
-                </View>
-                <View style={styles.winMethodItem}>
-                  <Text style={styles.winMethodValue}>{fighterStats.submissionWins}</Text>
-                  <Text style={styles.winMethodLabel}>Submission</Text>
-                </View>
-                <View style={styles.winMethodItem}>
-                  <Text style={styles.winMethodValue}>{fighterStats.decisionWins}</Text>
-                  <Text style={styles.winMethodLabel}>Decision</Text>
-                </View>
+              <View style={styles.quickStatItem}>
+                <Text style={[styles.quickStatValue, { color: '#FF9800' }]}>{fighterStats.draws}</Text>
+                <Text style={styles.quickStatLabel}>Draws</Text>
               </View>
             </View>
           </View>
         )}
 
-        {/* Fighter Achievements Card */}
+        {/* Fighter Identity Card */}
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Achievements</Text>
-            <TouchableOpacity
-              style={styles.viewRecordsButton}
-              onPress={() => router.push('/achievements')}
-            >
-              <Crown size={18} color="#FFD700" />
-              <Text style={styles.viewRecordsText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {currentAchievements.length > 0 ? (
-            <View style={styles.achievementsContainer}>
-              {currentAchievements.slice(0, 3).map((achievement) => (
-                <View key={achievement._id} style={styles.achievementItem}>
-                  <Crown size={16} color="#FFD700" />
-                  <View style={styles.achievementInfo}>
-                    <Text style={styles.achievementTitle}>{achievement.title}</Text>
-                    <Text style={styles.achievementOrg}>{achievement.organisation}</Text>
-                  </View>
-                </View>
-              ))}
-              {currentAchievements.length > 3 && (
-                <Text style={styles.moreAchievements}>
-                  +{currentAchievements.length - 3} more titles
-                </Text>
-              )}
+            <View style={styles.cardTitleContainer}>
+              <User size={20} color="#FFD700" />
+              <Text style={styles.cardTitle}>Fighter Identity</Text>
             </View>
-          ) : (
-            <View style={styles.noAchievements}>
-              <Text style={styles.noAchievementsText}>No current titles</Text>
-              <TouchableOpacity 
-                style={styles.addAchievementButton}
-                onPress={() => router.push('/achievements')}
-              >
-                <Text style={styles.addAchievementText}>Add Achievement</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Basic Info Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Profile Information</Text>
             <TouchableOpacity
               style={styles.editButton}
               onPress={() => router.push('/editProfile/FighterEditProfile')}
@@ -165,80 +140,237 @@ export default function FighterProfile({ userData }: FighterProfileProps) {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.infoItem}>
-            <Mail size={20} color="#FFD700" />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{userData.email}</Text>
-            </View>
-          </View>
-
-          <View style={styles.infoItem}>
-            <Calendar size={20} color="#FFD700" />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Member Since</Text>
-              <Text style={styles.infoValue}>
-                {new Date(userData.createdAt).toLocaleDateString()}
+          <View style={styles.identityGrid}>
+            <View style={styles.identityItem}>
+              <Text style={styles.identityLabel}>Legal Name</Text>
+              <Text style={styles.identityValue}>
+                {userData.firstName} {userData.lastName}
               </Text>
             </View>
+            {userData.fightName && (
+              <View style={styles.identityItem}>
+                <Text style={styles.identityLabel}>Fight Name</Text>
+                <Text style={styles.identityValue}>{userData.fightName}</Text>
+              </View>
+            )}
+            {userData.nickname && (
+              <View style={styles.identityItem}>
+                <Text style={styles.identityLabel}>Nickname</Text>
+                <Text style={styles.identityValue}>"{userData.nickname}"</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Physical Stats Card */}
+        <View style={styles.infoCard}>
+          <View style={styles.cardTitleContainer}>
+            <Activity size={20} color="#FFD700" />
+            <Text style={styles.cardTitle}>Physical Statistics</Text>
           </View>
 
-          {userData.age && (
-            <View style={styles.infoItem}>
-              <User size={20} color="#FFD700" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Age</Text>
-                <Text style={styles.infoValue}>{userData.age} years old</Text>
+          <View style={styles.physicalStatsGrid}>
+            {userData.age && (
+              <View style={styles.physicalStatItem}>
+                <User size={18} color="#FFD700" />
+                <View style={styles.physicalStatContent}>
+                  <Text style={styles.physicalStatValue}>{userData.age}</Text>
+                  <Text style={styles.physicalStatLabel}>Years Old</Text>
+                </View>
               </View>
-            </View>
-          )}
+            )}
+            {userData.height && (
+              <View style={styles.physicalStatItem}>
+                <Ruler size={18} color="#FFD700" />
+                <View style={styles.physicalStatContent}>
+                  <Text style={styles.physicalStatValue}>{userData.height}"</Text>
+                  <Text style={styles.physicalStatLabel}>Height</Text>
+                </View>
+              </View>
+            )}
+            {userData.weight && (
+              <View style={styles.physicalStatItem}>
+                <Weight size={18} color="#FFD700" />
+                <View style={styles.physicalStatContent}>
+                  <Text style={styles.physicalStatValue}>{userData.weight} lbs</Text>
+                  <Text style={styles.physicalStatLabel}>Weight</Text>
+                </View>
+              </View>
+            )}
+            {userData.reach && (
+              <View style={styles.physicalStatItem}>
+                <Target size={18} color="#FFD700" />
+                <View style={styles.physicalStatContent}>
+                  <Text style={styles.physicalStatValue}>{userData.reach}"</Text>
+                  <Text style={styles.physicalStatLabel}>Reach</Text>
+                </View>
+              </View>
+            )}
+          </View>
 
-          {userData.gym && (
-            <View style={styles.infoItem}>
-              <MapPin size={20} color="#FFD700" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Gym</Text>
-                <Text style={styles.infoValue}>{userData.gym}</Text>
-              </View>
-            </View>
-          )}
-
-          {userData.headCoach && (
-            <View style={styles.infoItem}>
-              <Users size={20} color="#FFD700" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Head Coach</Text>
-                <Text style={styles.infoValue}>{userData.headCoach}</Text>
-              </View>
+          {(userData.weightClass || userData.stance) && (
+            <View style={styles.additionalStatsContainer}>
+              {userData.weightClass && (
+                <View style={styles.additionalStatChip}>
+                  <Text style={styles.additionalStatText}>{userData.weightClass}</Text>
+                </View>
+              )}
+              {userData.stance && (
+                <View style={styles.additionalStatChip}>
+                  <Text style={styles.additionalStatText}>{userData.stance} Stance</Text>
+                </View>
+              )}
             </View>
           )}
         </View>
 
-        {/* Physical Stats */}
-        {(userData.height || userData.weight) && (
+        {/* Fight Record Card */}
+        {fighterStats && (
           <View style={styles.infoCard}>
-            <Text style={styles.cardTitle}>Physical Stats</Text>
-            <View style={styles.statsRow}>
-              {userData.height && (
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{userData.height}"</Text>
-                  <Text style={styles.statLabel}>Height</Text>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardTitleContainer}>
+                <Award size={20} color="#FFD700" />
+                <Text style={styles.cardTitle}>Fight Record</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.viewAllButton}
+                onPress={() => router.push('/fight-records')}
+              >
+                <TrendingUp size={18} color="#FFD700" />
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.recordStatsContainer}>
+              <View style={styles.recordMainStats}>
+                <View style={styles.recordStatItem}>
+                  <Text style={styles.recordStatValue}>{fighterStats.totalFights}</Text>
+                  <Text style={styles.recordStatLabel}>Total Fights</Text>
                 </View>
-              )}
-              {userData.weight && (
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{userData.weight} lbs</Text>
-                  <Text style={styles.statLabel}>Weight</Text>
+                <View style={styles.recordStatItem}>
+                  <Text style={[styles.recordStatValue, { color: '#4CAF50' }]}>{fighterStats.wins}</Text>
+                  <Text style={styles.recordStatLabel}>Wins</Text>
+                </View>
+                <View style={styles.recordStatItem}>
+                  <Text style={[styles.recordStatValue, { color: '#F44336' }]}>{fighterStats.losses}</Text>
+                  <Text style={styles.recordStatLabel}>Losses</Text>
+                </View>
+                <View style={styles.recordStatItem}>
+                  <Text style={[styles.recordStatValue, { color: '#FF9800' }]}>{fighterStats.draws}</Text>
+                  <Text style={styles.recordStatLabel}>Draws</Text>
+                </View>
+              </View>
+
+              <View style={styles.winMethodsContainer}>
+                <Text style={styles.winMethodsTitle}>Win Methods Breakdown</Text>
+                <View style={styles.winMethodsGrid}>
+                  <View style={styles.winMethodItem}>
+                    <Text style={styles.winMethodValue}>{fighterStats.koTkoWins}</Text>
+                    <Text style={styles.winMethodLabel}>KO/TKO</Text>
+                  </View>
+                  <View style={styles.winMethodItem}>
+                    <Text style={styles.winMethodValue}>{fighterStats.submissionWins}</Text>
+                    <Text style={styles.winMethodLabel}>Submission</Text>
+                  </View>
+                  <View style={styles.winMethodItem}>
+                    <Text style={styles.winMethodValue}>{fighterStats.decisionWins}</Text>
+                    <Text style={styles.winMethodLabel}>Decision</Text>
+                  </View>
+                </View>
+              </View>
+
+              {fighterStats.winStreak > 0 && (
+                <View style={styles.streakContainer}>
+                  <Star size={16} color="#FFD700" />
+                  <Text style={styles.streakText}>
+                    {fighterStats.winStreak} Fight Win Streak
+                  </Text>
                 </View>
               )}
             </View>
           </View>
         )}
 
-        {/* Disciplines */}
+        {/* Achievements Card */}
+        <View style={styles.infoCard}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleContainer}>
+              <Crown size={20} color="#FFD700" />
+              <Text style={styles.cardTitle}>Achievements & Titles</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.viewAllButton}
+              onPress={() => router.push('/achievements')}
+            >
+              <Crown size={18} color="#FFD700" />
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.achievementsPlaceholder}>
+            <Crown size={40} color="#666" />
+            <Text style={styles.achievementsPlaceholderText}>No achievements yet</Text>
+            <Text style={styles.achievementsPlaceholderSubtext}>
+              Start competing to earn titles and recognition
+            </Text>
+            <TouchableOpacity 
+              style={styles.addAchievementButton}
+              onPress={() => router.push('/achievements')}
+            >
+              <Text style={styles.addAchievementText}>Add Achievement</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Training Information Card */}
+        <View style={styles.infoCard}>
+          <View style={styles.cardTitleContainer}>
+            <MapPin size={20} color="#FFD700" />
+            <Text style={styles.cardTitle}>Training Information</Text>
+          </View>
+
+          <View style={styles.trainingInfoContainer}>
+            {userData.gym && (
+              <View style={styles.trainingInfoItem}>
+                <MapPin size={20} color="#FFD700" />
+                <View style={styles.trainingInfoContent}>
+                  <Text style={styles.trainingInfoLabel}>Training Facility</Text>
+                  <Text style={styles.trainingInfoValue}>{userData.gym}</Text>
+                </View>
+              </View>
+            )}
+
+            {userData.headCoach && (
+              <View style={styles.trainingInfoItem}>
+                <Users size={20} color="#FFD700" />
+                <View style={styles.trainingInfoContent}>
+                  <Text style={styles.trainingInfoLabel}>Head Coach</Text>
+                  <Text style={styles.trainingInfoValue}>{userData.headCoach}</Text>
+                </View>
+              </View>
+            )}
+
+            {(!userData.gym && !userData.headCoach) && (
+              <View style={styles.emptyTrainingInfo}>
+                <Text style={styles.emptyTrainingText}>No training information added</Text>
+                <TouchableOpacity
+                  style={styles.addInfoButton}
+                  onPress={() => router.push('/editProfile/FighterEditProfile')}
+                >
+                  <Text style={styles.addInfoText}>Add Training Info</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Fighting Disciplines Card */}
         {userData.disciplines && userData.disciplines.length > 0 && (
           <View style={styles.infoCard}>
-            <Text style={styles.cardTitle}>Fighting Disciplines</Text>
+            <View style={styles.cardTitleContainer}>
+              <Dumbbell size={20} color="#FFD700" />
+              <Text style={styles.cardTitle}>Fighting Disciplines</Text>
+            </View>
             <View style={styles.disciplinesContainer}>
               {userData.disciplines.map((discipline: string, index: number) => (
                 <View key={index} style={styles.disciplineTag}>
@@ -250,39 +382,98 @@ export default function FighterProfile({ userData }: FighterProfileProps) {
           </View>
         )}
 
-        {/* Social Media */}
-        {userData.socials && (
+        {/* Biography Card */}
+        {userData.bio && (
           <View style={styles.infoCard}>
-            <Text style={styles.cardTitle}>Social Media</Text>
-            {userData.socials.instagram && (
-              <TouchableOpacity style={styles.socialItem}>
-                <Image
-                  source={{ uri: 'https://img.icons8.com/fluency/48/instagram-new.png' }}
-                  style={styles.socialIcon}
-                />
-                <Text style={styles.socialText}>@{userData.socials.instagram}</Text>
-              </TouchableOpacity>
-            )}
-            {userData.socials.facebook && (
-              <TouchableOpacity style={styles.socialItem}>
-                <Image
-                  source={{ uri: 'https://img.icons8.com/fluency/48/facebook-new.png' }}
-                  style={styles.socialIcon}
-                />
-                <Text style={styles.socialText}>{userData.socials.facebook}</Text>
-              </TouchableOpacity>
-            )}
-            {userData.socials.youtube && (
-              <TouchableOpacity style={styles.socialItem}>
-                <Image
-                  source={{ uri: 'https://img.icons8.com/fluency/48/youtube-play.png' }}
-                  style={styles.socialIcon}
-                />
-                <Text style={styles.socialText}>{userData.socials.youtube}</Text>
-              </TouchableOpacity>
-            )}
+            <View style={styles.cardTitleContainer}>
+              <User size={20} color="#FFD700" />
+              <Text style={styles.cardTitle}>Biography</Text>
+            </View>
+            <Text style={styles.bioText}>{userData.bio}</Text>
           </View>
         )}
+
+        {/* Social Media Card */}
+        {userData.socials && Object.keys(userData.socials).length > 0 && (
+          <View style={styles.infoCard}>
+            <View style={styles.cardTitleContainer}>
+              <Globe size={20} color="#FFD700" />
+              <Text style={styles.cardTitle}>Social Media</Text>
+            </View>
+            
+            <View style={styles.socialMediaContainer}>
+              {userData.socials.instagram && (
+                <TouchableOpacity style={styles.socialItem}>
+                  <Instagram size={24} color="#E4405F" />
+                  <Text style={styles.socialText}>@{userData.socials.instagram}</Text>
+                </TouchableOpacity>
+              )}
+              {userData.socials.facebook && (
+                <TouchableOpacity style={styles.socialItem}>
+                  <Facebook size={24} color="#1877F2" />
+                  <Text style={styles.socialText}>{userData.socials.facebook}</Text>
+                </TouchableOpacity>
+              )}
+              {userData.socials.youtube && (
+                <TouchableOpacity style={styles.socialItem}>
+                  <Youtube size={24} color="#FF0000" />
+                  <Text style={styles.socialText}>{userData.socials.youtube}</Text>
+                </TouchableOpacity>
+              )}
+              {userData.socials.twitter && (
+                <TouchableOpacity style={styles.socialItem}>
+                  <Twitter size={24} color="#1DA1F2" />
+                  <Text style={styles.socialText}>@{userData.socials.twitter}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Account Information Card */}
+        <View style={styles.infoCard}>
+          <View style={styles.cardTitleContainer}>
+            <Mail size={20} color="#FFD700" />
+            <Text style={styles.cardTitle}>Account Information</Text>
+          </View>
+
+          <View style={styles.accountInfoContainer}>
+            <View style={styles.accountInfoItem}>
+              <Mail size={20} color="#FFD700" />
+              <View style={styles.accountInfoContent}>
+                <Text style={styles.accountInfoLabel}>Email Address</Text>
+                <Text style={styles.accountInfoValue}>{userData.email}</Text>
+              </View>
+            </View>
+
+            <View style={styles.accountInfoItem}>
+              <Calendar size={20} color="#FFD700" />
+              <View style={styles.accountInfoContent}>
+                <Text style={styles.accountInfoLabel}>Member Since</Text>
+                <Text style={styles.accountInfoValue}>
+                  {new Date(userData.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.accountInfoItem}>
+              <Activity size={20} color="#FFD700" />
+              <View style={styles.accountInfoContent}>
+                <Text style={styles.accountInfoLabel}>Profile Status</Text>
+                <View style={styles.statusContainer}>
+                  <View style={[styles.statusIndicator, userData.isActive && styles.statusIndicatorActive]} />
+                  <Text style={[styles.statusText, userData.isActive && styles.statusTextActive]}>
+                    {userData.isActive ? 'Active' : 'Inactive'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
       </View>
     </ScrollView>
   );
@@ -293,13 +484,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a1a',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#ccc',
+    marginTop: 16,
+    textAlign: 'center',
+  },
   header: {
     position: 'relative',
-    height: 300,
+    height: 320,
   },
   bannerImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
   defaultBanner: {
     width: '100%',
@@ -322,37 +527,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     marginBottom: 16,
     borderWidth: 4,
     borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 50,
+    borderRadius: 60,
   },
   avatarPlaceholder: {
     width: '100%',
     height: '100%',
-    borderRadius: 50,
+    borderRadius: 60,
     backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#1a1a1a',
   },
   name: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 4,
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  nickname: {
+    fontSize: 18,
+    color: '#FFD700',
+    marginBottom: 12,
+    textAlign: 'center',
+    fontStyle: 'italic',
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
@@ -361,31 +581,69 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFD700',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   role: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#1a1a1a',
-    marginLeft: 4,
-    fontWeight: '600',
+    marginLeft: 6,
+    fontWeight: '700',
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 24,
   },
-  infoCard: {
+  quickStatsCard: {
     backgroundColor: '#2a2a2a',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  quickStatsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  quickStatItem: {
+    alignItems: 'center',
+  },
+  quickStatValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 4,
+  },
+  quickStatLabel: {
+    fontSize: 14,
+    color: '#ccc',
+    fontWeight: '500',
+  },
+  infoCard: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -393,8 +651,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  cardTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
   },
@@ -402,58 +665,130 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 12,
     backgroundColor: '#333',
+    gap: 4,
   },
   editButtonText: {
     color: '#FFD700',
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 4,
   },
-  viewRecordsButton: {
+  viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 12,
     backgroundColor: '#333',
+    gap: 4,
   },
-  viewRecordsText: {
+  viewAllText: {
     color: '#FFD700',
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 4,
   },
-  statsGrid: {
+  identityGrid: {
+    gap: 16,
+  },
+  identityItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  identityLabel: {
+    fontSize: 14,
+    color: '#ccc',
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  identityValue: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  physicalStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginTop: 16,
+  },
+  physicalStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#333',
+    borderRadius: 12,
+    padding: 16,
+    flex: 1,
+    minWidth: '45%',
+    gap: 12,
+  },
+  physicalStatContent: {
+    flex: 1,
+  },
+  physicalStatValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 2,
+  },
+  physicalStatLabel: {
+    fontSize: 12,
+    color: '#ccc',
+    fontWeight: '500',
+  },
+  additionalStatsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+    flexWrap: 'wrap',
+  },
+  additionalStatChip: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  additionalStatText: {
+    color: '#1a1a1a',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  recordStatsContainer: {
+    gap: 20,
+  },
+  recordMainStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 20,
+    backgroundColor: '#333',
+    borderRadius: 16,
+    padding: 20,
   },
-  statItem: {
+  recordStatItem: {
     alignItems: 'center',
   },
-  statValue: {
+  recordStatValue: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFD700',
     marginBottom: 4,
   },
-  statLabel: {
+  recordStatLabel: {
     fontSize: 12,
     color: '#ccc',
+    fontWeight: '500',
   },
   winMethodsContainer: {
-    borderTopWidth: 1,
-    borderTopColor: '#333',
-    paddingTop: 16,
+    backgroundColor: '#333',
+    borderRadius: 16,
+    padding: 20,
   },
   winMethodsTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 12,
+    marginBottom: 16,
     textAlign: 'center',
   },
   winMethodsGrid: {
@@ -472,115 +807,184 @@ const styles = StyleSheet.create({
   winMethodLabel: {
     fontSize: 11,
     color: '#ccc',
+    fontWeight: '500',
   },
-  achievementsContainer: {
-    gap: 12,
-  },
-  achievementItem: {
+  streakContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#333',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 12,
+    gap: 8,
   },
-  achievementInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  achievementTitle: {
+  streakText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 2,
-  },
-  achievementOrg: {
-    fontSize: 12,
     color: '#FFD700',
+    fontWeight: '600',
   },
-  moreAchievements: {
-    fontSize: 12,
-    color: '#ccc',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  noAchievements: {
+  achievementsPlaceholder: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 40,
+    gap: 12,
   },
-  noAchievementsText: {
-    fontSize: 14,
+  achievementsPlaceholderText: {
+    fontSize: 18,
     color: '#ccc',
-    marginBottom: 12,
+    fontWeight: '600',
+  },
+  achievementsPlaceholderSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 8,
   },
   addAchievementButton: {
     backgroundColor: '#333',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   addAchievementText: {
     color: '#FFD700',
     fontSize: 14,
     fontWeight: '600',
   },
-  infoItem: {
+  trainingInfoContainer: {
+    marginTop: 16,
+    gap: 16,
+  },
+  trainingInfoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    backgroundColor: '#333',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
   },
-  infoContent: {
-    marginLeft: 12,
+  trainingInfoContent: {
     flex: 1,
   },
-  infoLabel: {
+  trainingInfoLabel: {
     fontSize: 14,
     color: '#ccc',
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: 16,
-    color: '#fff',
+    marginBottom: 4,
     fontWeight: '500',
   },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 20,
+  trainingInfoValue: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  emptyTrainingInfo: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    gap: 12,
+  },
+  emptyTrainingText: {
+    fontSize: 16,
+    color: '#ccc',
+  },
+  addInfoButton: {
+    backgroundColor: '#333',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  addInfoText: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: '600',
   },
   disciplinesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
+    gap: 12,
+    marginTop: 16,
   },
   disciplineTag: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFD700',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
   },
   disciplineText: {
     color: '#1a1a1a',
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 4,
+  },
+  bioText: {
+    fontSize: 16,
+    color: '#fff',
+    lineHeight: 24,
+    marginTop: 16,
+  },
+  socialMediaContainer: {
+    gap: 16,
+    marginTop: 16,
   },
   socialItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-  },
-  socialIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 12,
+    backgroundColor: '#333',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
   },
   socialText: {
     fontSize: 16,
     color: '#fff',
+    fontWeight: '500',
+  },
+  accountInfoContainer: {
+    gap: 16,
+    marginTop: 16,
+  },
+  accountInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#333',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  accountInfoContent: {
+    flex: 1,
+  },
+  accountInfoLabel: {
+    fontSize: 14,
+    color: '#ccc',
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  accountInfoValue: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#666',
+  },
+  statusIndicatorActive: {
+    backgroundColor: '#4CAF50',
+  },
+  statusText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '600',
+  },
+  statusTextActive: {
+    color: '#4CAF50',
   },
 });

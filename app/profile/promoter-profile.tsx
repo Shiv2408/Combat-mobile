@@ -1,19 +1,45 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Linking, ActivityIndicator } from 'react-native';
+import { useUser } from '@clerk/clerk-expo';
 import { useQuery } from 'convex/react';
 import { router } from 'expo-router';
-import { Trophy, CreditCard as Edit, Mail, Calendar, MapPin, User, Users, CalendarPlus, Phone, Globe, Shield, Award, Star, Building, Clock, CircleCheck as CheckCircle, ExternalLink } from 'lucide-react-native';
+import { Trophy, CreditCard as Edit, Mail, Calendar, MapPin, User, Users, CalendarPlus, Phone, Globe, Shield, Award, Star, Building, Clock, CircleCheck as CheckCircle, ExternalLink, Activity, TrendingUp, Target, Briefcase, Instagram, Facebook, Youtube, Twitter, Linkedin } from 'lucide-react-native';
 import { api } from '@/convex/_generated/api';
 
-interface PromoterProfileProps {
-  userData: any;
-}
-
-export default function PromoterProfile({ userData }: PromoterProfileProps) {
-  const promoterEvents = useQuery(
-    api.events.getPromoterEvents,
-    { promoterId: userData._id }
+export default function PromoterProfile() {
+  const { user } = useUser();
+  
+  const userData = useQuery(
+    api.promoters.getPromoterProfile,
+    user?.id ? { clerkId: user.id } : "skip"
   );
+
+  const promoterStats = useQuery(
+    api.promoters.getPromoterStatistics,
+    user?.id ? { clerkId: user.id } : "skip"
+  );
+
+  const recentEvents = useQuery(
+    api.promoters.getPromoterEventsDetailed,
+    user?.id ? { clerkId: user.id, status: undefined } : "skip"
+  );
+
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Please sign in to view your profile</Text>
+      </View>
+    );
+  }
+
+  if (!userData) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+        <Text style={styles.loadingText}>Loading Promoter Profile...</Text>
+      </View>
+    );
+  }
 
   const handleCall = () => {
     if (userData.phoneNumber) {
@@ -23,7 +49,7 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
 
   const handleWebsite = () => {
     if (userData.website) {
-      Linking.openURL(userData.website);
+      Linking.openURL(userData.website.startsWith('http') ? userData.website : `https://${userData.website}`);
     }
   };
 
@@ -40,8 +66,37 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
     return parts.join(', ');
   };
 
+  const handleSocialLink = (platform: string, handle: string | undefined) => {
+      if (!handle) return;
+      let url = '';
+      switch (platform) {
+        case 'instagram':
+          url = `https://instagram.com/${handle.replace('@', '')}`;
+          break;
+        case 'facebook':
+          url = `https://facebook.com/${handle}`;
+          break;
+        case 'youtube':
+          url = `https://youtube.com/${handle}`;
+          break;
+        case 'twitter':
+          url = `https://twitter.com/${handle.replace('@', '')}`;
+          break;
+        case 'linkedin':
+          url = `https://linkedin.com/in/${handle}`;
+          break;
+      }
+      if (url) {
+        Linking.openURL(url);
+      }
+    };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 100 }}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Enhanced Header with Banner */}
       <View style={styles.header}>
         {userData.bannerImage ? (
@@ -66,7 +121,7 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
             )}
             {userData.isVerified && (
               <View style={styles.verifiedBadge}>
-                <CheckCircle size={24} color="#FFD700" />
+                <CheckCircle size={24} color="#4A90E2" />
               </View>
             )}
           </View>
@@ -79,10 +134,10 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
               <Text style={styles.companyName}>{userData.companyName}</Text>
             )}
             <View style={styles.roleContainer}>
-              <Trophy size={20} color="#1a1a1a" />
+              <Briefcase size={20} color="#fff" />
               <Text style={styles.role}>Event Promoter</Text>
               {userData.isVerified && (
-                <Shield size={16} color="#1a1a1a" style={styles.verifiedIcon} />
+                <Shield size={16} color="#fff" style={styles.verifiedIcon} />
               )}
             </View>
             <View style={styles.statusContainer}>
@@ -98,45 +153,53 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
       </View>
 
       <View style={styles.content}>
+        {/* Quick Stats Overview */}
+        {promoterStats && (
+          <View style={styles.quickStatsCard}>
+            <View style={styles.quickStatsGrid}>
+              <View style={styles.quickStatItem}>
+                <Text style={styles.quickStatValue}>{promoterStats.totalEvents}</Text>
+                <Text style={styles.quickStatLabel}>Total Events</Text>
+              </View>
+              <View style={styles.quickStatItem}>
+                <Text style={[styles.quickStatValue, { color: '#4CAF50' }]}>{promoterStats.completedEvents}</Text>
+                <Text style={styles.quickStatLabel}>Completed</Text>
+              </View>
+              <View style={styles.quickStatItem}>
+                <Text style={[styles.quickStatValue, { color: '#FFD700' }]}>{promoterStats.upcomingEvents}</Text>
+                <Text style={styles.quickStatLabel}>Upcoming</Text>
+              </View>
+              <View style={styles.quickStatItem}>
+                <Text style={[styles.quickStatValue, { color: '#2196F3' }]}>{userData.yearsExperience || 0}</Text>
+                <Text style={styles.quickStatLabel}>Years Exp.</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Bio Section */}
         {userData.bio && (
           <View style={styles.bioCard}>
+            <View style={styles.cardTitleContainer}>
+              <User size={20} color="#4A90E2" />
+              <Text style={styles.cardTitle}>About</Text>
+            </View>
             <Text style={styles.bioText}>{userData.bio}</Text>
           </View>
         )}
 
-        {/* Professional Stats Card */}
-        <View style={styles.statsCard}>
-          <Text style={styles.cardTitle}>Professional Overview</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Calendar size={24} color="#FFD700" />
-              <Text style={styles.statValue}>{promoterEvents?.length || 0}</Text>
-              <Text style={styles.statLabel}>Total Events</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Clock size={24} color="#4CAF50" />
-              <Text style={styles.statValue}>{userData.yearsExperience || 0}</Text>
-              <Text style={styles.statLabel}>Years Experience</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Star size={24} color="#FF9800" />
-              <Text style={styles.statValue}>
-                {promoterEvents?.filter(e => e.status === 'Completed').length || 0}
-              </Text>
-              <Text style={styles.statLabel}>Completed</Text>
-            </View>
-          </View>
-        </View>
-
         {/* Quick Actions */}
         <View style={styles.actionsCard}>
+          <View style={styles.cardTitleContainer}>
+            <Target size={20} color="#4A90E2" />
+            <Text style={styles.cardTitle}>Quick Actions</Text>
+          </View>
           <View style={styles.actionsGrid}>
             <TouchableOpacity 
               style={styles.actionButton}
               onPress={() => router.push('/create-event')}
             >
-              <CalendarPlus size={24} color="#FFD700" />
+              <CalendarPlus size={24} color="#4A90E2" />
               <Text style={styles.actionText}>New Event</Text>
             </TouchableOpacity>
             
@@ -144,7 +207,7 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
               style={styles.actionButton}
               onPress={() => router.push('/promoter-events')}
             >
-              <Trophy size={24} color="#4CAF50" />
+              <Trophy size={24} color="#4A90E2" />
               <Text style={styles.actionText}>My Events</Text>
             </TouchableOpacity>
             
@@ -152,30 +215,102 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
               style={styles.actionButton}
               onPress={() => router.push('/editProfile/PromoterEditProfile')}
             >
-              <Edit size={24} color="#2196F3" />
+              <Edit size={24} color="#4A90E2" />
               <Text style={styles.actionText}>Edit Profile</Text>
             </TouchableOpacity>
           </View>
         </View>
 
+        {/* Professional Overview */}
+        <View style={styles.infoCard}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleContainer}>
+              <Activity size={20} color="#4A90E2" />
+              <Text style={styles.cardTitle}>Professional Overview</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => router.push('/editProfile/PromoterEditProfile')}
+            >
+              <Edit size={18} color="#4A90E2" />
+              <Text style={styles.editButtonText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.professionalGrid}>
+            {userData.yearsExperience && (
+              <View style={styles.professionalItem}>
+                <Clock size={18} color="#4A90E2" />
+                <View style={styles.professionalContent}>
+                  <Text style={styles.professionalValue}>{userData.yearsExperience} Years</Text>
+                  <Text style={styles.professionalLabel}>Experience</Text>
+                </View>
+              </View>
+            )}
+            
+            <View style={styles.professionalItem}>
+              <Shield size={18} color="#4A90E2" />
+              <View style={styles.professionalContent}>
+                <Text style={[styles.professionalValue, {
+                  color: userData.isVerified ? '#4CAF50' : '#FF9800'
+                }]}>
+                  {userData.isVerified ? 'Verified' : 'Pending'}
+                </Text>
+                <Text style={styles.professionalLabel}>Status</Text>
+              </View>
+            </View>
+
+            {userData.licenseNumber && (
+              <View style={styles.professionalItem}>
+                <Award size={18} color="#4A90E2" />
+                <View style={styles.professionalContent}>
+                  <Text style={styles.professionalValue}>{userData.licenseNumber}</Text>
+                  <Text style={styles.professionalLabel}>License</Text>
+                </View>
+              </View>
+            )}
+
+            {promoterStats && (
+              <View style={styles.professionalItem}>
+                <TrendingUp size={18} color="#4A90E2" />
+                <View style={styles.professionalContent}>
+                  <Text style={styles.professionalValue}>{promoterStats.totalEvents}</Text>
+                  <Text style={styles.professionalLabel}>Events Organized</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+
         {/* Contact Information */}
         <View style={styles.infoCard}>
-          <Text style={styles.cardTitle}>Contact Information</Text>
+          <View style={styles.cardTitleContainer}>
+            <Mail size={20} color="#4A90E2" />
+            <Text style={styles.cardTitle}>Contact Information</Text>
+          </View>
           
-          <TouchableOpacity style={styles.contactItem} onPress={handleBusinessEmail}>
-            <Mail size={20} color="#FFD700" />
+          <View style={styles.contactItem}>
+            <Mail size={20} color="#4A90E2" />
             <View style={styles.contactContent}>
-              <Text style={styles.contactLabel}>Business Email</Text>
-              <Text style={styles.contactValue}>
-                {userData.businessEmail || userData.email}
-              </Text>
+              <Text style={styles.contactLabel}>Personal Email</Text>
+              <Text style={styles.contactValue}>{userData.email}</Text>
             </View>
-            <ExternalLink size={16} color="#ccc" />
-          </TouchableOpacity>
+          </View>
+
+          {userData.businessEmail && (
+            <TouchableOpacity style={styles.contactItem} onPress={handleBusinessEmail}>
+              <Building size={20} color="#4A90E2" />
+              <View style={styles.contactContent}>
+                <Text style={styles.contactLabel}>Business Email</Text>
+                <Text style={styles.contactValue}>{userData.businessEmail}</Text>
+              </View>
+              <ExternalLink size={16} color="#ccc" />
+            </TouchableOpacity>
+          )}
 
           {userData.phoneNumber && (
             <TouchableOpacity style={styles.contactItem} onPress={handleCall}>
-              <Phone size={20} color="#4CAF50" />
+              <Phone size={20} color="#4A90E2" />
               <View style={styles.contactContent}>
                 <Text style={styles.contactLabel}>Phone</Text>
                 <Text style={styles.contactValue}>{userData.phoneNumber}</Text>
@@ -186,7 +321,7 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
 
           {userData.website && (
             <TouchableOpacity style={styles.contactItem} onPress={handleWebsite}>
-              <Globe size={20} color="#2196F3" />
+              <Globe size={20} color="#4A90E2" />
               <View style={styles.contactContent}>
                 <Text style={styles.contactLabel}>Website</Text>
                 <Text style={styles.contactValue}>{userData.website}</Text>
@@ -197,51 +332,19 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
 
           {getFullAddress() && (
             <View style={styles.contactItem}>
-              <MapPin size={20} color="#FF9800" />
+              <MapPin size={20} color="#4A90E2" />
               <View style={styles.contactContent}>
                 <Text style={styles.contactLabel}>Business Address</Text>
                 <Text style={styles.contactValue}>{getFullAddress()}</Text>
               </View>
             </View>
           )}
-        </View>
 
-        {/* Professional Credentials */}
-        <View style={styles.infoCard}>
-          <Text style={styles.cardTitle}>Professional Credentials</Text>
-          
-          <View style={styles.credentialItem}>
-            <Award size={20} color="#FFD700" />
-            <View style={styles.credentialContent}>
-              <Text style={styles.credentialLabel}>Verification Status</Text>
-              <View style={styles.verificationStatus}>
-                <Text style={[styles.credentialValue, {
-                  color: userData.isVerified ? '#4CAF50' : '#FF5722'
-                }]}>
-                  {userData.isVerified ? 'Verified Promoter' : 'Pending Verification'}
-                </Text>
-                {userData.isVerified && (
-                  <CheckCircle size={16} color="#4CAF50" style={styles.checkIcon} />
-                )}
-              </View>
-            </View>
-          </View>
-
-          {userData.licenseNumber && (
-            <View style={styles.credentialItem}>
-              <Shield size={20} color="#2196F3" />
-              <View style={styles.credentialContent}>
-                <Text style={styles.credentialLabel}>License Number</Text>
-                <Text style={styles.credentialValue}>{userData.licenseNumber}</Text>
-              </View>
-            </View>
-          )}
-
-          <View style={styles.credentialItem}>
-            <Calendar size={20} color="#9C27B0" />
-            <View style={styles.credentialContent}>
-              <Text style={styles.credentialLabel}>Member Since</Text>
-              <Text style={styles.credentialValue}>
+          <View style={styles.contactItem}>
+            <Calendar size={20} color="#4A90E2" />
+            <View style={styles.contactContent}>
+              <Text style={styles.contactLabel}>Member Since</Text>
+              <Text style={styles.contactValue}>
                 {new Date(userData.createdAt).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
@@ -255,11 +358,14 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
         {/* Event Specialties */}
         {userData.specialties && userData.specialties.length > 0 && (
           <View style={styles.infoCard}>
-            <Text style={styles.cardTitle}>Event Specialties</Text>
+            <View style={styles.cardTitleContainer}>
+              <Star size={20} color="#4A90E2" />
+              <Text style={styles.cardTitle}>Event Specialties</Text>
+            </View>
             <View style={styles.specialtiesContainer}>
               {userData.specialties.map((specialty: string, index: number) => (
                 <View key={index} style={styles.specialtyTag}>
-                  <Star size={16} color="#1a1a1a" />
+                  <Award size={16} color="#fff" />
                   <Text style={styles.specialtyText}>{specialty}</Text>
                 </View>
               ))}
@@ -267,22 +373,83 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
           </View>
         )}
 
-        {/* Recent Events Preview */}
-        {promoterEvents && promoterEvents.length > 0 && (
+        {/* Event Statistics */}
+        {promoterStats && (
           <View style={styles.infoCard}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Recent Events</Text>
+              <View style={styles.cardTitleContainer}>
+                <TrendingUp size={20} color="#4A90E2" />
+                <Text style={styles.cardTitle}>Event Statistics</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.viewAllButton}
+                onPress={() => router.push('/promoter-events')}
+              >
+                <Trophy size={18} color="#4A90E2" />
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.eventStatsContainer}>
+              <View style={styles.eventStatsGrid}>
+                <View style={styles.eventStatItem}>
+                  <Text style={styles.eventStatValue}>{promoterStats.totalEvents}</Text>
+                  <Text style={styles.eventStatLabel}>Total Events</Text>
+                </View>
+                <View style={styles.eventStatItem}>
+                  <Text style={[styles.eventStatValue, { color: '#4CAF50' }]}>{promoterStats.completedEvents}</Text>
+                  <Text style={styles.eventStatLabel}>Completed</Text>
+                </View>
+                <View style={styles.eventStatItem}>
+                  <Text style={[styles.eventStatValue, { color: '#FFD700' }]}>{promoterStats.upcomingEvents}</Text>
+                  <Text style={styles.eventStatLabel}>Upcoming</Text>
+                </View>
+                <View style={styles.eventStatItem}>
+                  <Text style={[styles.eventStatValue, { color: '#FF5722' }]}>{promoterStats.cancelledEvents}</Text>
+                  <Text style={styles.eventStatLabel}>Cancelled</Text>
+                </View>
+              </View>
+
+              {promoterStats.nextEvent && (
+                <View style={styles.nextEventContainer}>
+                  <Text style={styles.nextEventTitle}>Next Event</Text>
+                  <View style={styles.nextEventCard}>
+                    <Text style={styles.nextEventName}>{promoterStats.nextEvent.eventName}</Text>
+                    <Text style={styles.nextEventDate}>
+                      {new Date(promoterStats.nextEvent.eventDate).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </Text>
+                    <Text style={styles.nextEventVenue}>{promoterStats.nextEvent.venue}</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Recent Events Preview */}
+        {recentEvents && recentEvents.length > 0 && (
+          <View style={styles.infoCard}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardTitleContainer}>
+                <Calendar size={20} color="#4A90E2" />
+                <Text style={styles.cardTitle}>Recent Events</Text>
+              </View>
               <TouchableOpacity
                 style={styles.viewAllButton}
                 onPress={() => router.push('/promoter-events')}
               >
                 <Text style={styles.viewAllText}>View All</Text>
-                <ExternalLink size={16} color="#FFD700" />
+                <ExternalLink size={16} color="#4A90E2" />
               </TouchableOpacity>
             </View>
             
             <View style={styles.eventsPreview}>
-              {promoterEvents.slice(0, 3).map((event) => (
+              {recentEvents.slice(0, 3).map((event) => (
                 <View key={event._id} style={styles.eventPreviewItem}>
                   <View style={styles.eventPreviewInfo}>
                     <Text style={styles.eventPreviewTitle}>{event.eventName}</Text>
@@ -293,7 +460,8 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
                   </View>
                   <View style={[styles.eventStatusBadge, {
                     backgroundColor: event.status === 'Upcoming' ? '#FFD700' : 
-                                   event.status === 'Completed' ? '#4CAF50' : '#FF9800'
+                                   event.status === 'Completed' ? '#4CAF50' : 
+                                   event.status === 'Live' ? '#FF5722' : '#FF9800'
                   }]}>
                     <Text style={styles.eventStatusText}>{event.status}</Text>
                   </View>
@@ -306,55 +474,56 @@ export default function PromoterProfile({ userData }: PromoterProfileProps) {
         {/* Social Media */}
         {userData.socials && Object.values(userData.socials).some(Boolean) && (
           <View style={styles.infoCard}>
-            <Text style={styles.cardTitle}>Social Media Presence</Text>
-            <View style={styles.socialsGrid}>
-              {userData.socials.instagram && (
-                <TouchableOpacity style={styles.socialButton}>
-                  <Image
-                    source={{ uri: 'https://img.icons8.com/fluency/48/instagram-new.png' }}
-                    style={styles.socialIcon}
-                  />
-                  <Text style={styles.socialText}>Instagram</Text>
+            <View style={styles.cardTitleContainer}>
+              <Users size={20} color="#4A90E2" />
+              <Text style={styles.cardTitle}>Social Media & Marketing</Text>
+            </View>
+              {userData.socials?.instagram && (
+                <TouchableOpacity 
+                  style={styles.socialItem}
+                  onPress={() => handleSocialLink('instagram', userData.socials?.instagram)}
+                >
+                  <Instagram size={24} color="#E4405F" />
+                  <Text style={styles.socialText}>@{userData.socials.instagram}</Text>
                 </TouchableOpacity>
               )}
-              {userData.socials.facebook && (
-                <TouchableOpacity style={styles.socialButton}>
-                  <Image
-                    source={{ uri: 'https://img.icons8.com/fluency/48/facebook-new.png' }}
-                    style={styles.socialIcon}
-                  />
-                  <Text style={styles.socialText}>Facebook</Text>
+              {userData.socials?.facebook && (
+                <TouchableOpacity 
+                  style={styles.socialItem}
+                  onPress={() => handleSocialLink('facebook', userData.socials?.facebook)}
+                >
+                  <Facebook size={24} color="#1877F2" />
+                  <Text style={styles.socialText}>{userData.socials.facebook}</Text>
                 </TouchableOpacity>
               )}
-              {userData.socials.youtube && (
-                <TouchableOpacity style={styles.socialButton}>
-                  <Image
-                    source={{ uri: 'https://img.icons8.com/fluency/48/youtube-play.png' }}
-                    style={styles.socialIcon}
-                  />
-                  <Text style={styles.socialText}>YouTube</Text>
+              {userData.socials?.youtube && (
+                <TouchableOpacity 
+                  style={styles.socialItem}
+                  onPress={() => handleSocialLink('youtube', userData.socials?.youtube)}
+                >
+                  <Youtube size={24} color="#FF0000" />
+                  <Text style={styles.socialText}>{userData.socials.youtube}</Text>
                 </TouchableOpacity>
               )}
-              {userData.socials.twitter && (
-                <TouchableOpacity style={styles.socialButton}>
-                  <Image
-                    source={{ uri: 'https://img.icons8.com/fluency/48/twitter.png' }}
-                    style={styles.socialIcon}
-                  />
-                  <Text style={styles.socialText}>Twitter</Text>
+              {userData.socials?.twitter && (
+                <TouchableOpacity 
+                  style={styles.socialItem}
+                  onPress={() => handleSocialLink('twitter', userData.socials?.twitter)}
+                >
+                  <Twitter size={24} color="#1DA1F2" />
+                  <Text style={styles.socialText}>@{userData.socials.twitter}</Text>
                 </TouchableOpacity>
               )}
-              {userData.socials.linkedin && (
-                <TouchableOpacity style={styles.socialButton}>
-                  <Image
-                    source={{ uri: 'https://img.icons8.com/fluency/48/linkedin.png' }}
-                    style={styles.socialIcon}
-                  />
-                  <Text style={styles.socialText}>LinkedIn</Text>
+              {userData.socials?.linkedin && (
+                <TouchableOpacity 
+                  style={styles.socialItem}
+                  onPress={() => handleSocialLink('linkedin', userData.socials?.linkedin)}
+                >
+                  <Linkedin size={24} color="#0077B5" />
+                  <Text style={styles.socialText}>{userData.socials.linkedin}</Text>
                 </TouchableOpacity>
               )}
             </View>
-          </View>
         )}
       </View>
     </ScrollView>
@@ -366,18 +535,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a1a',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#ccc',
+    marginTop: 16,
+    textAlign: 'center',
+  },
   header: {
     position: 'relative',
-    height: 350,
+    height: 320,
   },
   bannerImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
   defaultBanner: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#FFD700',
+    backgroundColor: '#4A90E2',
     position: 'relative',
   },
   bannerPattern: {
@@ -394,7 +577,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   profileSection: {
     position: 'absolute',
@@ -426,20 +609,20 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 60,
-    backgroundColor: '#FFD700',
+    backgroundColor: '#4A90E2',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#fff',
   },
   verifiedBadge: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#fff',
     borderRadius: 20,
     padding: 4,
   },
@@ -457,24 +640,32 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   companyName: {
-    fontSize: 16,
-    color: '#FFD700',
-    marginBottom: 8,
+    fontSize: 18,
+    color: '#4A90E2',
+    marginBottom: 12,
     fontWeight: '600',
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   roleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFD700',
+    backgroundColor: '#4A90E2',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 25,
     marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   role: {
-    fontSize: 14,
-    color: '#1a1a1a',
+    fontSize: 16,
+    color: '#fff',
     marginLeft: 6,
     fontWeight: '700',
   },
@@ -492,97 +683,117 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#fff',
     fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 24,
+    paddingTop: 24,
   },
-  bioCard: {
+  quickStatsCard: {
     backgroundColor: '#2a2a2a',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#FFD700',
-  },
-  bioText: {
-    fontSize: 16,
-    color: '#fff',
-    lineHeight: 24,
-    fontStyle: 'italic',
-  },
-  statsCard: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#333',
   },
-  statsGrid: {
+  quickStatsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 20,
   },
-  statItem: {
+  quickStatItem: {
     alignItems: 'center',
-    flex: 1,
   },
-  statValue: {
+  quickStatValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 8,
+    color: '#4A90E2',
     marginBottom: 4,
   },
-  statLabel: {
-    fontSize: 12,
+  quickStatLabel: {
+    fontSize: 14,
     color: '#ccc',
-    textAlign: 'center',
+    fontWeight: '500',
+  },
+  bioCard: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4A90E2',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  bioText: {
+    fontSize: 16,
+    color: '#fff',
+    lineHeight: 24,
+    marginTop: 16,
   },
   actionsCard: {
     backgroundColor: '#2a2a2a',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 20,
+    padding: 24,
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   actionsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 16,
   },
   actionButton: {
     alignItems: 'center',
     backgroundColor: '#333',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     flex: 1,
     marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#444',
   },
   actionText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
     marginTop: 8,
     textAlign: 'center',
   },
   infoCard: {
     backgroundColor: '#2a2a2a',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 20,
+    padding: 24,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -590,25 +801,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  cardTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 16,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#333',
+    gap: 4,
+  },
+  editButtonText: {
+    color: '#4A90E2',
+    fontSize: 14,
+    fontWeight: '600',
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 12,
     backgroundColor: '#333',
+    gap: 4,
   },
   viewAllText: {
-    color: '#FFD700',
-    fontSize: 12,
+    color: '#4A90E2',
+    fontSize: 14,
     fontWeight: '600',
-    marginRight: 4,
+  },
+  professionalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  professionalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#333',
+    borderRadius: 12,
+    padding: 16,
+    flex: 1,
+    minWidth: '45%',
+    gap: 12,
+  },
+  professionalContent: {
+    flex: 1,
+  },
+  professionalValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4A90E2',
+    marginBottom: 2,
+  },
+  professionalLabel: {
+    fontSize: 12,
+    color: '#ccc',
+    fontWeight: '500',
   },
   contactItem: {
     flexDirection: 'row',
@@ -622,66 +880,92 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contactLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#ccc',
     marginBottom: 4,
-    textTransform: 'uppercase',
-    fontWeight: '600',
+    fontWeight: '500',
   },
   contactValue: {
     fontSize: 16,
     color: '#fff',
-    fontWeight: '500',
-  },
-  credentialItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-  },
-  credentialContent: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  credentialLabel: {
-    fontSize: 12,
-    color: '#ccc',
-    marginBottom: 4,
-    textTransform: 'uppercase',
     fontWeight: '600',
-  },
-  credentialValue: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '500',
-  },
-  verificationStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkIcon: {
-    marginLeft: 8,
   },
   specialtiesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
+    gap: 12,
+    marginTop: 16,
   },
   specialtyTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFD700',
+    backgroundColor: '#4A90E2',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 20,
+    gap: 6,
   },
   specialtyText: {
-    color: '#1a1a1a',
+    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 6,
+  },
+  eventStatsContainer: {
+    gap: 20,
+  },
+  eventStatsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#333',
+    borderRadius: 16,
+    padding: 20,
+  },
+  eventStatItem: {
+    alignItems: 'center',
+  },
+  eventStatValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#4A90E2',
+    marginBottom: 4,
+  },
+  eventStatLabel: {
+    fontSize: 12,
+    color: '#ccc',
+    fontWeight: '500',
+  },
+  nextEventContainer: {
+    backgroundColor: '#333',
+    borderRadius: 16,
+    padding: 20,
+  },
+  nextEventTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  nextEventCard: {
+    alignItems: 'center',
+  },
+  nextEventName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4A90E2',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  nextEventDate: {
+    fontSize: 14,
+    color: '#FFD700',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  nextEventVenue: {
+    fontSize: 12,
+    color: '#ccc',
+    textAlign: 'center',
   },
   eventsPreview: {
     gap: 12,
@@ -705,7 +989,7 @@ const styles = StyleSheet.create({
   },
   eventPreviewDate: {
     fontSize: 12,
-    color: '#FFD700',
+    color: '#4A90E2',
     marginBottom: 2,
   },
   eventPreviewVenue: {
@@ -720,29 +1004,22 @@ const styles = StyleSheet.create({
   eventStatusText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#fff',
   },
-  socialsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+  socialsContainer: {
+    gap: 16,
+    marginTop: 16,
   },
-  socialButton: {
+  socialItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#333',
     borderRadius: 12,
-    padding: 12,
-    flex: 1,
-    minWidth: '45%',
-  },
-  socialIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 8,
+    padding: 16,
+    gap: 12,
   },
   socialText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#fff',
     fontWeight: '500',
   },
