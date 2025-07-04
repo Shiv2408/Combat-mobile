@@ -17,59 +17,36 @@ export default defineSchema({
 
   // Fighter-specific data
     fighters: defineTable({
-    clerkId: v.string(), // Clerk's unique user ID
-    publicId: v.string(), // Public identifier
+    clerkId: v.string(), // Reference to main user
+    fightName: v.optional(v.string()),
     firstName: v.string(),
     lastName: v.string(),
-    fullName: v.optional(v.string()),
-    weightClass: v.optional(v.string()),
-    email: v.optional(v.string()),
-    location: v.object({
-      country: v.string(),
-      city: v.string(),
-    }),
-    status: v.union(
-      v.literal("ACTIVE"),
-      v.literal("INACTIVE"),
-      v.literal("RETIRED"),
-      v.literal("SUSPENDED")
+    email: v.string(),
+    age: v.optional(v.number()),
+    height: v.optional(v.number()), // in inches
+    weight: v.optional(v.number()), // in lbs
+    gym: v.optional(v.string()),
+    headCoach: v.optional(v.string()),
+    disciplines: v.optional(v.array(v.string())),
+    profileImage: v.optional(v.string()),
+    bannerImage: v.optional(v.string()),
+    socials: v.optional(
+      v.object({
+        instagram: v.optional(v.string()),
+        facebook: v.optional(v.string()),
+        youtube: v.optional(v.string()),
+        twitter: v.optional(v.string()),
+      })
     ),
-    details: v.object({
-      fightName: v.optional(v.string()),
-      dob: v.string(), // ISO 8601 string,
-      height: v.string(),
-      weight: v.string(),
-      gender: v.optional(v.union(v.literal("MALE"), v.literal("FEMALE"))),
-      gym: v.union(v.id("gyms"), v.null()),
-      coach: v.optional(v.string()),
-      manager: v.optional(v.string()),
-      headCoach: v.optional(v.string()),
-    }),
-    disciplines: v.union(v.array(v.id("disciplines")), v.null()),
-    profileImage: v.string(),
-    profileThumbnail: v.optional(v.string()),
-    bannerImage: v.string(),
-
-    socialLinks: v.object({
-      instagram: v.optional(v.string()),
-      facebook: v.optional(v.string()),
-      twitter: v.optional(v.string()),
-      youtube: v.optional(v.string()),
-    }),
-    verified: v.boolean(),
-    debut: v.optional(v.boolean()),
-    isVerifiedOrDebut: v.optional(v.boolean()),
-  }).index("by_clerk_id", ["clerkId"])
-  .index("by_publicId", ["publicId"])
-  .index("by_location", ["location"])
-  .index("by_status", ["status"])
-  .index("by_verified", ["verified"])
-  .index("by_debut", ["debut"])
-  .index("by_verified_city", ["isVerifiedOrDebut", "location.city"])
-  .index("by_verified_country", ["isVerifiedOrDebut", "location.country"])
-  .index("by_disciplines", ["disciplines"])
-  .index("by_verifiedOrDebut", ["isVerifiedOrDebut"])
-  .index("by_gender", ["details.gender"]),
+    bio: v.optional(v.string()),
+    nickname: v.optional(v.string()),
+    stance: v.optional(v.union(v.literal("Orthodox"), v.literal("Southpaw"), v.literal("Switch"))),
+    reach: v.optional(v.number()), // in inches
+    weightClass: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_clerk_id", ["clerkId"]),
 
   // Promoter-specific data
   promoters: defineTable({
